@@ -4,12 +4,19 @@ type LogoProps = {
   size?: number;
   className?: string;
   withWordmark?: boolean;
+  /** Set false to show wordmark (if any) without the mark SVG. */
+  showMark?: boolean;
 };
 
-export function Logo({ size = 22, className, withWordmark = true }: LogoProps) {
+export function Logo({
+  size = 22,
+  className,
+  withWordmark = true,
+  showMark = true,
+}: LogoProps) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <LogoMark size={size} />
+      {showMark && <LogoMark size={size} />}
       {withWordmark && (
         <span className="font-serif text-[17px] tracking-tight leading-none">
           ARES

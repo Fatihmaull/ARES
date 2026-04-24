@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 import { Instrument_Serif, Geist, JetBrains_Mono } from "next/font/google";
+import { ThemeProvider } from "@/components/ares/theme-provider";
 import "./globals.css";
+
+const themeInitScript = `(() => { try {
+  var k = "ares-theme", L = "ares-dashboard-theme";
+  var t = localStorage.getItem(k) || localStorage.getItem(L);
+  if (t !== "light" && t !== "dark") t = "dark";
+  document.documentElement.classList.toggle("dark", t === "dark");
+} catch (e) {} })();`;
 
 const geist = Geist({
   subsets: ["latin"],
@@ -36,10 +44,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geist.variable} ${instrumentSerif.variable} ${jetBrainsMono.variable}`}
     >
       <body className="font-sans antialiased bg-background text-foreground">
-        {children}
+        <script
+          // Apply saved theme before paint (no flash of wrong background)
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

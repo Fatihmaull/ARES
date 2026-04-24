@@ -2,18 +2,10 @@
 
 import Link from "next/link";
 import { Sidebar } from "@/components/ares/sidebar";
-import { 
-  Bell, 
-  Search, 
-  User, 
-  ChevronDown,
-  Globe,
-  Database,
-  Cpu,
-  X
-} from "lucide-react";
+import { Bell, Search, User, ChevronDown, X, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useUIStore } from "@/lib/ares/store";
 
 export default function DashboardLayout({
   children,
@@ -21,7 +13,10 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [searchValue, setSearchValue] = useState("");
-  const [showNotificationCount, setShowNotificationCount] = useState(true);
+  const theme = useUIStore((s) => s.theme);
+  const setTheme = useUIStore((s) => s.setTheme);
+  const isDark = theme === "dark";
+
   return (
     <div className="flex min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
       <Sidebar />
@@ -58,6 +53,19 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              className="p-2 text-muted-foreground hover:text-foreground transition-all hover:bg-secondary/50 rounded-lg border border-transparent hover:border-border"
+              title={isDark ? "Mode terang" : "Mode gelap"}
+              aria-label={isDark ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
+            >
+              {isDark ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+            </button>
             <Link href="/dashboard/notifications" className="p-2 text-muted-foreground hover:text-foreground transition-all hover:bg-secondary/50 rounded-lg relative">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full border-2 border-card" />

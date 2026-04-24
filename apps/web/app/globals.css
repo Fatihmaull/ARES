@@ -48,31 +48,41 @@
     --cell-pad: 1.25rem;
   }
 
+  /* Dashboard / dark: deep charcoal with warm terracotta accent */
   .dark {
-    --background: 40 4% 8%;
-    --foreground: 43 33% 97%;
+    --background: 220 16% 7%;
+    --foreground: 40 20% 96%;
 
-    --card: 40 4% 12%;
+    --card: 220 14% 11%;
     --card-foreground: var(--foreground);
 
-    --popover: 40 4% 12%;
+    --popover: 220 14% 11%;
     --popover-foreground: var(--foreground);
 
-    --primary: 15 54% 52%;
-    --primary-foreground: var(--ivory);
+    --primary: 15 55% 58%;
+    --primary-foreground: 40 25% 98%;
 
-    --secondary: 40 4% 15%;
-    --secondary-foreground: 43 14% 67%;
+    --secondary: 220 12% 16%;
+    --secondary-foreground: 40 12% 78%;
 
-    --muted: 40 4% 15%;
-    --muted-foreground: 43 14% 67%;
+    --muted: 220 10% 18%;
+    --muted-foreground: 40 8% 58%;
 
-    --accent: 40 4% 15%;
+    --accent: 220 12% 16%;
     --accent-foreground: var(--foreground);
 
-    --border: 40 4% 18%;
-    --input: 40 4% 19%;
-    --ring: 208 81% 58%;
+    --destructive: 0 50% 48%;
+    --destructive-foreground: 40 25% 98%;
+
+    --border: 220 10% 20%;
+    --input: 220 10% 17%;
+    --ring: 15 55% 50%;
+
+    --severity-critical: #e85d5d;
+    --severity-high: #e8956b;
+    --severity-medium: #d97757;
+    --severity-low: #8b8983;
+    --severity-info: #6d7a8c;
   }
 }
 
@@ -200,6 +210,22 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /* Card shell used across dashboard */
+  .ares-card {
+    @apply rounded-2xl border border-border bg-card;
+  }
+  .whisper-shadow {
+    box-shadow: 0 1px 0 hsl(var(--border) / 0.5),
+      0 20px 50px -20px hsl(0 0% 0% / 0.35);
+  }
+  .dark .whisper-shadow {
+    box-shadow: 0 1px 0 hsl(var(--border) / 0.4),
+      0 24px 60px -24px hsl(0 0% 0% / 0.55);
+  }
+  .ring-shadow {
+    box-shadow: 0 0 0 1px hsl(var(--border) / 0.6);
+  }
 }
 
 /* Subtle noise texture for hero atmosphere */
@@ -218,6 +244,18 @@
   mask-image: linear-gradient(
     to bottom,
     rgba(0, 0, 0, 0.7),
+    rgba(0, 0, 0, 0)
+  );
+}
+.dark .noise::before {
+  background-image: radial-gradient(
+      hsl(var(--primary) / 0.1) 1px,
+      transparent 1px
+    ),
+    radial-gradient(hsl(var(--foreground) / 0.03) 1px, transparent 1px);
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.55),
     rgba(0, 0, 0, 0)
   );
 }

@@ -161,8 +161,8 @@ export default function OverviewPage() {
               <AreaChart data={posture?.layers || []}>
                 <defs>
                   <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#c96442" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#c96442" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -184,7 +184,7 @@ export default function OverviewPage() {
                     backgroundColor: 'hsl(var(--card))', 
                     border: '1px solid hsl(var(--border))', 
                     borderRadius: '12px',
-                    boxShadow: 'rgba(0, 0, 0, 0.05) 0px 4px 24px'
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
                   }}
                   itemStyle={{ color: 'hsl(var(--primary))', fontFamily: 'var(--font-sans)' }}
                 />
