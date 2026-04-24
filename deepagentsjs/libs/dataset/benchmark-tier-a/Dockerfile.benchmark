@@ -1,0 +1,31 @@
+# Pinned-toolchain image for `anchor test`, `cargo build`, and static analysis in CI or sandboxed benchmark runs.
+# Build: docker build -f Dockerfile.benchmark -t ares-benchmark-solana .
+# Run:   docker run --rm -v "$PWD:/work" -w /work ares-benchmark-solana anchor test
+# Adjust ARG versions to match your program's MSRV and Anchor version.
+
+# syntax=docker/dockerfile:1
+ARG RUST_VERSION=1.75.0
+ARG SOLANA_INSTALL_RELEASE=1.18.15
+ARG ANCHOR_VERSION=0.30.1
+
+FROM rust:${RUST_VERSION}-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl build-essential pkg-config libssl-dev libudev-dev git \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/root/.local/share/solana/install/active_release/bin:/root/.avm/bin:/root/.cargo/bin:${PATH}"
+
+RUN sh -c "$(curl -sSfL https://release.solana.com/v${SOLANA_INSTALL_RELEASE}/install)"
+
+RUN rustup component add rustfmt clippy
+
+RUN cargo install --git https://github.com/coral-xyz/anchor avm --locked --force \
+  && avm install ${ANCHOR_VERSION} \
+  && avm use ${ANCHOR_VERSION}
+
+# Optional: Semgrep for static policy checks (uncomment if needed in your pipeline)
+# RUN pip install --no-cache-dir semgrep
+
+WORKDIR /work
+CMD ["/bin/bash", "-lc", "anchor --version && solana --version && rustc --version"]

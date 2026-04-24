@@ -32,28 +32,64 @@ export default function ConsolePage() {
 
   useEffect(() => {
     setMounted(true);
-    
+
+    let intentionalClose = false;
     const eventSource = new EventSource("/api/console/stream");
-    
+
     eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'log') {
-        setLogs((prev) => {
-          // Prevent duplicates by checking id or timestamp+message
-          const exists = prev.some(l => l.timestamp === data.timestamp && l.message === data.message);
-          if (exists) return prev;
-          return [...prev, data];
-        });
-        setLoading(false);
+      try {
+        const data = JSON.parse(event.data) as {
+          type?: string;
+          id?: string;
+          source?: string;
+          level?: LogEntry["level"];
+          message?: string;
+          timestamp?: string;
+        };
+        if (data.type === "log" && data.message && data.timestamp) {
+          const entry: LogEntry = {
+            id:
+              data.id ??
+              `${data.timestamp}:${data.message.slice(0, 32)}`,
+            source: data.source ?? "ARES",
+            level: data.level ?? "info",
+            message: data.message,
+            timestamp: data.timestamp,
+          };
+          setLogs((prev) => {
+            const exists = prev.some(
+              (l) =>
+                l.timestamp === entry.timestamp && l.message === entry.message
+            );
+            if (exists) return prev;
+            return [...prev, entry];
+          });
+          setLoading(false);
+        }
+      } catch {
+        /* ignore malformed chunks */
       }
     };
 
-    eventSource.onerror = (err) => {
-      console.error("SSE connection error:", err);
+    eventSource.onerror = () => {
+      if (intentionalClose) return;
+      // Browser passes Event — it stringifies as {} in console; use readyState.
+      const state = eventSource.readyState;
+      if (state === EventSource.CLOSED) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn(
+            "[console/stream] SSE closed (readyState=CLOSED). If this appears once in dev, React Strict Mode may have torn down the first connection."
+          );
+        }
+      } else {
+        console.warn("[console/stream] SSE issue; readyState=", state);
+      }
       eventSource.close();
+      setLoading(false);
     };
 
     return () => {
+      intentionalClose = true;
       eventSource.close();
     };
   }, []);

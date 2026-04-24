@@ -3,11 +3,20 @@
   "private": true,
   "scripts": {
     "build": "pnpm -r run build",
-    "dev": "pnpm -r run dev"
+    "dev": "pnpm -r run dev",
+    "typecheck": "pnpm -r --if-present run typecheck"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3"
+    ],
+    "ignoredBuiltDependencies": [
+      "core-js",
+      "esbuild",
+      "sharp"
     ]
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
   }
 }

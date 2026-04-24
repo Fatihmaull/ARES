@@ -1,5 +1,4 @@
 {
-  "extends": "@tsconfig/recommended/tsconfig.json",
   "files": [],
   "compilerOptions": {
     "target": "ES2021",
@@ -7,6 +6,7 @@
     "module": "NodeNext",
     "moduleResolution": "nodenext",
     "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
     "noImplicitReturns": true,
     "declaration": true,
     "noFallthroughCasesInSwitch": true,
@@ -17,6 +17,7 @@
     "allowJs": true,
     "strict": true,
     "strictFunctionTypes": false,
+    "skipLibCheck": true,
     "types": ["node"],
     "resolveJsonModule": true,
     "isolatedModules": true

@@ -1,56 +1,37 @@
 # ASST CLI Transformation Walkthrough
 
-## 1. Overview
-The ASST Solana Security Tool has been modernized from a Next.js web application into a CLI-native Agentic Tool. This change enables developers to perform high-speed security audits directly from their local workspace without requiring a browser.
+This document outlines the changes made to transform ASST from a web-based tool into a powerful, agentic CLI tool.
 
-## 2. Key Components Created
+## Major Changes
 
-### 2.1 CLI Entry Point (`apps/asst-cli/src/asst.ts`)
-- Implemented using **Commander.js**.
-- Commands:
-  - `asst init`: Environment configuration.
-  - `asst scan`: Sequential L1-L6 security assurance.
-  - `asst chat`: Persistent REPL for codebase interaction.
-  - `asst index`: Search indexing for the repository.
+### 1. New CLI Package (`apps/asst-cli`)
+- Established a TypeScript-native package for the CLI.
+- Integrated `commander.js` for command routing.
+- Path: `apps/asst-cli/src/asst.ts`
 
-### 2.2 Agentic Engine (`apps/asst-cli/src/engine/agent.ts`)
-- Orchestrates LangGraph logic for the terminal.
-- Integrates 11+ security tools from `deepagentsjs`.
-- Provides stateful chat sessions with SQLite persistence.
+### 2. Agentic Engine
+- Implemented `ASSTAgentEngine` using LangGraph.
+- Added 11+ security tools from the ARES engine.
+- Added file system and terminal execution tools with safety confirmations.
 
-### 2.3 Integrated Security Tools
-- **Filesystem Tools:** `read_file`, `write_file`, and `run_terminal_cmd`.
-- **Solana Tools:** RPC analysis, Git Diff, Account Snapshot, etc.
+### 3. Persistence Layer
+- Integrated SQLite for session history.
+- The agent now remembers previous interactions within a session.
 
-## 3. How to Use
+### 4. Windows Optimization
+- Created `Launch_ASST.bat` to allow one-click launch from the desktop.
+- Fixed terminal closure issues by adding explicit error handling and environment validation.
 
-### Installation
-```bash
-# From the monorepo root
-pnpm install
-cd apps/asst-cli
-pnpm build
-npm link # To use 'asst' command globally
-```
+### 5. Two-Step Scan Workflow
+- Modified `asst scan` to first report findings and then propose fixes, as per requirements.
 
-### Running a Scan
-Navigate to your Solana/Anchor project and run:
-```bash
-asst scan .
-```
-1. ASST will perform sequential checks (L1-L6).
-2. A summary report of vulnerabilities will be printed.
-3. You will be asked if you want the agent to propose and apply fixes.
+## How to Run
 
-### Interactive Chat
-Start a persistent session to ask specific questions about your code:
-```bash
-asst chat
-```
-The agent maintains history in `.asst/asst.db`, allowing for complex, multi-turn debugging.
+1. Open a terminal in the project root.
+2. Run `Launch_ASST.bat` (Windows) or `npx asst chat` (if installed).
+3. Ensure your `.env` file contains `OPENROUTER_API_KEY`.
 
-## 4. Safety First
-All destructive actions (`write_file`, `run_terminal_cmd`) are gated by a **Safe Mode** confirmation. The agent will describe exactly what it want to do and ask for your approval before proceeding.
-
----
-*Created by ASST Agent on 2026-04-15*
+## Next Steps
+- [ ] Add more granular L1-L6 lane tools.
+- [ ] Enhance semantic search indexing.
+- [ ] Finalize the `asst init` onboarding flow.

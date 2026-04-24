@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/asst.js",
     "dev": "tsx src/asst.ts",
     "test": "node --import tsx --test src/__tests__/engine.test.ts"

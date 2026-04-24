@@ -4,70 +4,73 @@
 
 @layer base {
   :root {
-    /* Claude-inspired Light Theme (Parchment) */
-    --parchment: 48 24% 94%; /* #f5f4ed */
-    --ivory: 43 33% 97%; /* #faf9f5 */
+    /* Parchment + terracotta, editorial tone */
+    --parchment: 48 24% 94%;
+    --ivory: 43 33% 97%;
     --background: var(--parchment);
-    --foreground: 40 4% 8%; /* #141413 - Anthropic Near Black */
-    
+    --foreground: 40 4% 8%;
+
     --card: var(--ivory);
     --card-foreground: var(--foreground);
-    
+
     --popover: var(--ivory);
     --popover-foreground: var(--foreground);
-    
-    --primary: 15 54% 52%; /* #c96442 - Terracotta */
+
+    --primary: 15 54% 52%;
     --primary-foreground: var(--ivory);
-    
-    --secondary: 48 22% 89%; /* #e8e6dc - Warm Sand */
-    --secondary-foreground: 40 4% 28%; /* #4d4c48 - Charcoal Warm */
-    
+
+    --secondary: 48 22% 89%;
+    --secondary-foreground: 40 4% 28%;
+
     --muted: 48 20% 89%;
-    --muted-foreground: 45 3% 43%; /* #5e5d59 - Olive Gray */
-    
+    --muted-foreground: 45 3% 43%;
+
     --accent: 48 22% 89%;
     --accent-foreground: var(--foreground);
-    
-    --destructive: 0 56% 45%; /* #b53333 - Error Crimson */
-    --destructive-foreground: var(--ivory);
-    
-    --border: 48 33% 92%; /* #f0eee6 - Border Cream */
-    --input: 48 22% 89%;
-    --ring: 208 81% 58%; /* #3898ec - Focus Blue */
-    
-    --radius: 0.75rem;
 
-    /* Semantic Security Colors (Warm Tones) */
+    --destructive: 0 56% 45%;
+    --destructive-foreground: var(--ivory);
+
+    --border: 40 6% 82%;
+    --input: 48 22% 89%;
+    --ring: 208 81% 58%;
+
+    --radius: 0.5rem;
+
     --severity-critical: #b53333;
     --severity-high: #d97757;
     --severity-medium: #c96442;
     --severity-low: #87867f;
     --severity-info: #b0aea5;
+
+    --rail-pad-x: 1rem;
+    --rail-pad-x-md: 1.5rem;
+    --cell-pad: 1.25rem;
   }
 
   .dark {
-    --background: 40 4% 8%; /* #141413 - Anthropic Near Black */
-    --foreground: 43 33% 97%; /* #faf9f5 - Ivory */
-    
-    --card: 40 4% 19%; /* #30302e - Dark Surface */
+    --background: 40 4% 8%;
+    --foreground: 43 33% 97%;
+
+    --card: 40 4% 12%;
     --card-foreground: var(--foreground);
-    
-    --popover: 40 4% 19%;
+
+    --popover: 40 4% 12%;
     --popover-foreground: var(--foreground);
-    
-    --primary: 15 54% 52%; /* Terracotta */
+
+    --primary: 15 54% 52%;
     --primary-foreground: var(--ivory);
-    
-    --secondary: 40 4% 19%;
-    --secondary-foreground: 43 14% 67%; /* #b0aea5 - Warm Silver */
-    
-    --muted: 40 4% 19%;
+
+    --secondary: 40 4% 15%;
+    --secondary-foreground: 43 14% 67%;
+
+    --muted: 40 4% 15%;
     --muted-foreground: 43 14% 67%;
-    
-    --accent: 40 4% 19%;
+
+    --accent: 40 4% 15%;
     --accent-foreground: var(--foreground);
-    
-    --border: 40 4% 19%;
+
+    --border: 40 4% 18%;
     --input: 40 4% 19%;
     --ring: 208 81% 58%;
   }
@@ -79,43 +82,142 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "ss01" 1, "cv11" 1;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-serif font-medium tracking-tight;
-    line-height: 1.15;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif tracking-tight;
+    font-weight: 400;
+    line-height: 0.95;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.15);
   }
 }
 
-/* Claude Shadow Tokens */
+/* Ampcode-style grid primitives */
 @layer components {
-  .ring-shadow {
-    box-shadow: 0px 0px 0px 1px hsl(var(--border));
-  }
-  
-  .whisper-shadow {
-    box-shadow: rgba(0, 0, 0, 0.05) 0px 4px 24px;
+  .rail {
+    @apply mx-auto w-full;
+    max-width: 1320px;
   }
 
-  .ares-card {
-    @apply bg-card border border-border rounded-xl transition-all duration-200;
+  .rail-frame {
+    @apply border-x border-border;
   }
 
-  .ares-card-interactive {
-    @apply hover:ring-shadow hover:bg-accent/50;
+  .grid-container {
+    @apply grid grid-cols-4 md:grid-cols-6 lg:grid-cols-6 gap-0;
+  }
+
+  .grid-section {
+    @apply col-span-full;
+    padding: 2.25rem 0;
+  }
+
+  .grid-section--dense {
+    @apply col-span-full;
+    padding: 0;
+  }
+
+  .cell-pad {
+    padding: var(--cell-pad);
+  }
+
+  .cell-pad--stroke {
+    @apply border-l border-border;
+  }
+
+  .rail-tick {
+    position: relative;
+  }
+  .rail-tick::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 10px;
+    background: hsl(var(--primary));
+  }
+
+  .label {
+    @apply font-mono text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  .label-accent {
+    @apply font-mono text-[10.5px] uppercase tracking-[0.18em] text-primary;
+  }
+
+  .display {
+    @apply font-serif;
+    letter-spacing: -0.035em;
+    line-height: 0.92;
+  }
+
+  /* Type scale */
+  .type-xs {
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .type-sm {
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+  .type-base {
+    font-size: 17px;
+    line-height: 1.5;
+  }
+  .type-lg {
+    font-size: 22px;
+    line-height: 1.25;
+  }
+  .type-xl {
+    font-size: clamp(30px, 4vw, 44px);
+    line-height: 1;
+  }
+  .type-4xl {
+    font-size: clamp(52px, 9vw, 120px);
+    line-height: 0.9;
+  }
+
+  /* Horizontal scroll rail */
+  .full-bleed-scroll {
+    margin-left: calc(var(--cell-pad) * -1);
+    margin-right: calc(var(--cell-pad) * -1);
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
 
-/* Layout Utilities */
-.editorial-spacing {
-  @apply py-20 md:py-32;
-}
-
-.near-black-bg {
-  background-color: #141413;
-}
-
-.parchment-bg {
-  background-color: #f5f4ed;
+/* Subtle noise texture for hero atmosphere */
+.noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+      hsl(var(--primary) / 0.06) 1px,
+      transparent 1px
+    ),
+    radial-gradient(hsl(var(--foreground) / 0.04) 1px, transparent 1px);
+  background-size: 28px 28px, 17px 17px;
+  background-position: 0 0, 14px 8px;
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.7),
+    rgba(0, 0, 0, 0)
+  );
 }
