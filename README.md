@@ -4,8 +4,12 @@
 teams shipping Solana (and related) software. Deployed as **Assurance Run**:
 orchestrated checks + commit-bound evidence, not a one-shot "audit".
 
-> **New here? Start with [`REPO_MAP.md`](./REPO_MAP.md) and
-> [`ARCHITECTURE.md`](./ARCHITECTURE.md).**
+**Canonical source:** [github.com/ares-system/ares-system](https://github.com/ares-system/ares-system)
+
+> **New here?** Read [`docs/REPO_MAP.md`](./docs/REPO_MAP.md), then
+> [`ARCHITECTURE.md`](./ARCHITECTURE.md), then
+> [`packages/engine/README.md`](./packages/engine/README.md) (engine API) and
+> [`apps/web/README.md`](./apps/web/README.md) (public web + dashboard).
 
 ## What ASST does
 
@@ -17,7 +21,8 @@ Given a Solana repository, ASST can:
 3. Emit **assurance manifests**: signed-ish JSON bundles of tool output
    + SARIF + git metadata, reproducible across runs.
 4. Expose the same tools to Cursor / Claude Desktop via **MCP**.
-5. Surface everything in a **web dashboard** (future public product).
+5. Surface results in a **Next.js web app** — marketing pages plus a
+   **security dashboard** (`/dashboard`) backed by the same engine.
 
 ## Architecture at a glance
 
@@ -46,18 +51,22 @@ Given a Solana repository, ASST can:
 
 ## Layout
 
-| Path                | What                                                                 |
-| ------------------- | -------------------------------------------------------------------- |
-| `packages/engine/`  | `@ares/engine` — orchestrator, sub-agents, tools, persistence, skills loader. See [`packages/engine/README.md`](./packages/engine/README.md). |
-| `apps/asst-cli/`    | `asst` terminal client. See [`apps/asst-cli/README.md`](./apps/asst-cli/README.md). |
-| `apps/web/`         | Next.js dashboard + `/api/*` routes. See [`apps/web/README.md`](./apps/web/README.md). |
-| `apps/mcp-server/`  | MCP stdio server for Cursor / Claude. See [`apps/mcp-server/README.md`](./apps/mcp-server/README.md). |
-| `apps/chain-intake/`| Helius webhook receiver + backfill. See [`apps/chain-intake/README.md`](./apps/chain-intake/README.md). |
-| `deepagentsjs/`     | Vendored LangGraph engine + runnable examples (incl. assurance-run manifest writer). |
-| `.agents/skills/`   | Canonical skills directory loaded by the engine.                     |
-| `docs/`             | PRD, dashboard UX specs, internal design notes.                      |
+| Path | What |
+| ---- | ---- |
+| `packages/engine/` | `@ares/engine` — orchestrator, sub-agents, tools, persistence, skills loader. See [`packages/engine/README.md`](./packages/engine/README.md). |
+| `apps/asst-cli/` | `asst` terminal client. See [`apps/asst-cli/README.md`](./apps/asst-cli/README.md). |
+| `apps/web/` | Next.js marketing site, dashboard, `/api/*`. See [`apps/web/README.md`](./apps/web/README.md). |
+| `apps/mcp-server/` | MCP stdio server for Cursor / Claude. See [`apps/mcp-server/README.md`](./apps/mcp-server/README.md). |
+| `apps/chain-intake/` | Helius webhook receiver + backfill. See [`apps/chain-intake/README.md`](./apps/chain-intake/README.md). |
+| `deepagentsjs/` | Vendored LangGraph stack, examples, eval harnesses (e.g. `evals/ares-security/`, `libs/dataset/benchmark-tier-a/`). |
+| `.agents/skills/` | Canonical skills directory loaded by the engine. |
+| `docs/` | PRD, walkthrough, **repo map** ([`docs/REPO_MAP.md`](./docs/REPO_MAP.md)), whitepaper, tool catalog, references, dashboard UX, security checklists. |
 
-Every directory above has its own `README.md`.
+## Web UI (public + dashboard)
+
+- **Stack:** Next.js 15, Tailwind, shared layout across landing and `/dashboard/*`.
+- **Theme:** global **dark / light** toggle; preference is stored in `localStorage` (`ares-theme`) and applied before first paint to avoid flash.
+- **Product / billing:** there is no live in-repo payment processor. Planned auth, tiers, and billing are described in [`docs/design/public-web-auth-billing.md`](./docs/design/public-web-auth-billing.md).
 
 ## Quick start
 
@@ -66,13 +75,16 @@ Every directory above has its own `README.md`.
 pnpm install
 pnpm -r build
 
+# Typecheck all packages that define a `typecheck` script
+pnpm typecheck
+
 # Interactive CLI (Windows)
 ./Launch_ASST.bat
 
 # Interactive CLI (macOS / Linux)
 ./launch-asst.sh
 
-# Web dashboard
+# Web app
 pnpm --filter @asst/web dev    # http://localhost:3000
 
 # MCP server (wire into Cursor / Claude Desktop)
@@ -110,19 +122,20 @@ Details: [`packages/engine/README.md` § Security model](./packages/engine/READM
 
 ## Documentation index
 
-| Document                                 | Purpose                                    |
-| ---------------------------------------- | ------------------------------------------ |
-| [`REPO_MAP.md`](./REPO_MAP.md)           | Directory-by-directory navigation          |
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md)   | System design (delegates to WHITEPAPER §9) |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md)   | Dev workflow, conventions, how to add things |
-| [`WHITEPAPER.en.md`](./WHITEPAPER.en.md) | Product narrative (EN)                     |
-| [`WHITEPAPER.id.md`](./WHITEPAPER.id.md) | Product narrative (ID)                     |
-| [`TOOLS.md`](./TOOLS.md)                 | Tool catalog + citations                   |
-| [`COMPETITORS.md`](./COMPETITORS.md)     | Market landscape                           |
-| [`PRD.md`](./PRD.md)                     | Product requirements                       |
-| [`WALKTHROUGH.md`](./WALKTHROUGH.md)     | Demo script                                |
-| [`docs/PRD.md`](./docs/PRD.md)           | Expanded PRD                               |
-| [`docs/DASHBOARD-UX.en.md`](./docs/DASHBOARD-UX.en.md) | Dashboard UX spec             |
+| Document | Purpose |
+| -------- | ------- |
+| [`docs/REPO_MAP.md`](./docs/REPO_MAP.md) | Every top-level directory, one place |
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | System design, surfaces vs engine |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Dev setup, conventions, how to add things |
+| [`docs/WHITEPAPER.md`](./docs/WHITEPAPER.md) | Hub: EN / ID product narrative (canonical sections in **§9–§11**) |
+| [`docs/TOOLS.md`](./docs/TOOLS.md) | Tool catalog hub + language stubs |
+| [`docs/REFERENCES.md`](./docs/REFERENCES.md) | Citations and standards references |
+| [`docs/PRD.md`](./docs/PRD.md) | Product requirements |
+| [`docs/walkthrough.md`](./docs/walkthrough.md) | Demo / walkthrough script |
+| [`docs/DASHBOARD-UX.en.md`](./docs/DASHBOARD-UX.en.md) | Dashboard UX spec |
+| [`docs/design/public-web-auth-billing.md`](./docs/design/public-web-auth-billing.md) | Public web, auth, billing (design) |
+| [`deepagentsjs/docs/TOOLS-MAP.md`](./deepagentsjs/docs/TOOLS-MAP.md) | Deep Agents code ↔ product tool mapping |
+| [`deepagentsjs/docs/AI-SECURITY-BENCHMARK-FRAMEWORK-ID.md`](./deepagentsjs/docs/AI-SECURITY-BENCHMARK-FRAMEWORK-ID.md) | AI security benchmark framework (ID) |
 
 ## License
 

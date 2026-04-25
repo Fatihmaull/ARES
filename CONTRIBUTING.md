@@ -1,8 +1,9 @@
 # Contributing
 
-Read [`REPO_MAP.md`](./REPO_MAP.md) and [`ARCHITECTURE.md`](./ARCHITECTURE.md)
-first. This document covers the day-to-day mechanics: setup, conventions,
-and recipes for the most common changes.
+Read [`docs/REPO_MAP.md`](./docs/REPO_MAP.md) and
+[`ARCHITECTURE.md`](./ARCHITECTURE.md) first. For a shorter overview and
+links, see [`README.md`](./README.md). This document covers the day-to-day
+mechanics: setup, conventions, and recipes for the most common changes.
 
 ## 1. Dev setup
 
@@ -48,6 +49,7 @@ pnpm --filter @asst/cli test
 | Target                 | Command                                                      |
 | ---------------------- | ------------------------------------------------------------ |
 | Build everything       | `pnpm -r build`                                              |
+| Typecheck (workspaces) | `pnpm typecheck`                                             |
 | CLI dev loop           | `pnpm --filter @asst/cli dev`                                |
 | CLI compiled run       | `pnpm --filter @asst/cli start`                              |
 | Web dev server         | `pnpm --filter @asst/web dev`                                |
@@ -126,6 +128,7 @@ pnpm --filter @asst/cli test
   `(closes A7)` in the body).
 - Before opening a PR:
   - `pnpm -r build` (everything compiles)
+  - `pnpm typecheck` when your package defines a `typecheck` script
   - `pnpm --filter @asst/cli test` (unit tests pass)
   - Update any affected `README.md`.
 

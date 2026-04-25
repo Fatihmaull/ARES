@@ -6,14 +6,22 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "benchmark": "tsx src/run-benchmark.ts"
+    "benchmark": "tsx src/run-benchmark.ts",
+    "benchmark:compare": "tsx src/compare-harnesses.ts",
+    "benchmark:static": "ARES_BENCHMARK_HARNESS=static tsx src/run-benchmark.ts",
+    "benchmark:team": "ARES_BENCHMARK_HARNESS=team tsx src/run-benchmark.ts",
+    "benchmark:static-rich": "ARES_BENCHMARK_HARNESS=static_rich ARES_BENCHMARK_COMPILE_CHECK=rustfmt tsx src/run-benchmark.ts",
+    "benchmark:team-rich": "ARES_BENCHMARK_HARNESS=team_rich ARES_BENCHMARK_COMPILE_CHECK=rustfmt tsx src/run-benchmark.ts"
   },
   "dependencies": {
     "@deepagents/evals": "workspace:*",
+    "@langchain/anthropic": "^1.3.27",
+    "@langchain/core": "^1.1.38",
     "deepagents": "workspace:*",
-    "langsmith": "^0.5.4",
+    "zod": "^4.3.6",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.1",
+    "langsmith": "^0.5.4",
     "vitest": "^4.0.18"
   },
   "devDependencies": {

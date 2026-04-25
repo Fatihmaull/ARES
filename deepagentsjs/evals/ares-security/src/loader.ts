@@ -32,16 +32,17 @@ export async function loadDataset(): Promise<VulnerabilityCase[]> {
   });
 }
 
-const CATEGORY_KEYWORDS: Record<string, VulnerabilityCategory[]> = {
+const CATEGORY_KEYWORDS: Record<VulnerabilityCategory, string[]> = {
   REENTRANCY: ["reentrancy", "recursive", "reentracy"],
   ACCESS_CONTROL: ["access control", "unauthorized", "permission", "admin", "authority"],
   ARITHMETIC: ["overflow", "underflow", "integer", "arithmetic", "precision", "calculation"],
-  ARBITRARY_CPI: ["arbitrary", "cpi", "external", "program", "call"],
-  PDA_VALIDATION: ["pda", "program derived", "address", "validation", "bump"],
-  SIGNER_AUTH: ["signer", "signature", "authentication", "owner", ".is_signer"],
+  ARBITRARY_CPI: ["arbitrary cpi", "cpi", "cross-program"],
+  PDA_VALIDATION: ["pda", "program derived", "bump seed", "bump"],
+  SIGNER_AUTH: ["signer", "signature", "authentication", "is_signer"],
   INIT_BYPASS: ["init", "initialization", "reinit", "initialize"],
   PRIVACY: ["privacy", "confidential", "visibility"],
-  ORACLE: ["oracle", "price", "feed", "external"],
+  ORACLE: ["oracle", "price feed", "stale price"],
+  OTHER: [],
 };
 
 function inferCategory(vulnerabilities: string[]): VulnerabilityCategory {

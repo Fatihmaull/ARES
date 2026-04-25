@@ -1,10 +1,8 @@
-import type { ChatCompletion } from "openai";
-
 /**
  * ARES Security Benchmark Protocol
- * 
+ *
  * Evaluates AI agents on Solana vulnerability detection with:
- * - Detection accuracy (TP/FP/FN)
+ * - Detection accuracy (TP/FP/FN/TN)
  * - PoC generation quality
  * - Remediation quality
  * - Speed (elapsed time)
@@ -47,6 +45,7 @@ export interface Finding {
 export interface EvaluationResult {
   caseId: string;
   detected: boolean;
+  isVulnerable: boolean; // whether reference case has vulnerabilities
   severity: Severity | null;
   truePositive: boolean;
   falsePositive: boolean;
@@ -57,6 +56,12 @@ export interface EvaluationResult {
   remediationQuality: number; // 0-1
   elapsedMs: number;
   findings: Finding[];
+  /** Harness used for this case (for comparing baseline vs team vs rich). */
+  harness?: BenchmarkHarness;
+  /** Number of extra user turns after failed compile/syntax check. */
+  feedbackRounds?: number;
+  /** Captured rustfmt/anchor stderr lines for debugging. */
+  compileLog?: string[];
 }
 
 export interface BenchmarkMetrics {
@@ -75,6 +80,16 @@ export interface BenchmarkMetrics {
   casesPerHour: number;
 }
 
+/** How the benchmark instantiates the agent (baseline vs team vs rich feedback). */
+export type BenchmarkHarness =
+  | "static"
+  | "team"
+  | "static_rich"
+  | "team_rich";
+
+/** PoC/compile check mode for rich feedback loops. */
+export type CompileCheckMode = "off" | "rustfmt" | "anchor";
+
 export interface BenchmarkConfig {
   datasetPath: string;
   modelName: string;
@@ -83,6 +98,45 @@ export interface BenchmarkConfig {
   categories: VulnerabilityCategory[];
   minCvss: number;
   outputPath: string;
+  /** @default "static" — single DeepAgent, JSON in / JSON out (establishes baseline). */
+  harness: BenchmarkHarness;
+  /**
+   * Extra user/assistant turns when compile check fails (static_rich / team_rich).
+   * @default 2
+   */
+  maxFeedbackRounds: number;
+  /**
+   * * off — no compile loop (default).
+   * * rustfmt — `rustfmt --check` on the PoC string (syntax/parse feedback).
+   * * anchor — reserved: run `anchor build` in `anchorWorkspace` when wired.
+   */
+  compileCheck: CompileCheckMode;
+  /** When compileCheck is anchor, path to an Anchor workspace (programs copied by policy). */
+  anchorWorkspace?: string;
+}
+
+export function isRichHarness(h: BenchmarkHarness): boolean {
+  return h === "static_rich" || h === "team_rich";
+}
+
+export function defaultBenchmarkConfig(
+  base: Partial<BenchmarkConfig> = {}
+): BenchmarkConfig {
+  return {
+    datasetPath:
+      base.datasetPath ||
+      "../libs/dataset/Solana_vulnerability_audit_dataset_V2/Solana.json",
+    modelName: base.modelName || "claude-sonnet-4-20250514",
+    temperature: base.temperature ?? 0.1,
+    maxTokens: base.maxTokens ?? 4096,
+    categories: base.categories ?? [],
+    minCvss: base.minCvss ?? 0,
+    outputPath: base.outputPath || "./ares-security-report.json",
+    harness: base.harness ?? "static",
+    maxFeedbackRounds: base.maxFeedbackRounds ?? 2,
+    compileCheck: base.compileCheck ?? "off",
+    anchorWorkspace: base.anchorWorkspace,
+  };
 }
 
 export const DEFAULT_PROMPT = `You are an elite Solana security auditor specializing in Anchor/Rust smart contract vulnerability detection.
@@ -127,10 +181,14 @@ Analyze this code:
 `;
 
 export function calculateMetrics(results: EvaluationResult[]): BenchmarkMetrics {
+  // TP: case is vulnerable AND agent detected it correctly
   const tp = results.filter(r => r.truePositive).length;
+  // FP: agent reported findings BUT case is not vulnerable (or findings don't match)
   const fp = results.filter(r => r.falsePositive).length;
-  const fn = results.filter(r => r.truePositive && !r.detected).length;
-  const tn = results.filter(r => !r.truePositive && !r.detected).length;
+  // FN: case IS vulnerable BUT agent failed to detect it
+  const fn = results.filter(r => r.isVulnerable && !r.detected).length;
+  // TN: case is NOT vulnerable AND agent correctly reported nothing
+  const tn = results.filter(r => !r.isVulnerable && !r.detected).length;
 
   const precision = tp / (tp + fp) || 0;
   const recall = tp / (tp + fn) || 0;

@@ -44,8 +44,8 @@ describe("ARES Security Benchmark", () => {
     const mockResponse = {
       findings: [
         {
-          type: "ACCESS_CONTROL", // Common category
-          severity: "CRITICAL",
+          type: "ACCESS_CONTROL" as const, // Common category
+          severity: "CRITICAL" as const,
           location: { file: "lib.rs", line: 1 },
           description: "Missing access control on admin function",
           cwe: "CWE-284",
@@ -69,6 +69,7 @@ describe("ARES Security Benchmark", () => {
       {
         caseId: "001",
         detected: true,
+        isVulnerable: true,
         severity: "CRITICAL",
         truePositive: true,
         falsePositive: false,
@@ -83,6 +84,7 @@ describe("ARES Security Benchmark", () => {
       {
         caseId: "002",
         detected: false,
+        isVulnerable: true,
         severity: null,
         truePositive: false,
         falsePositive: false,
@@ -97,6 +99,7 @@ describe("ARES Security Benchmark", () => {
       {
         caseId: "003",
         detected: true,
+        isVulnerable: true,
         severity: "HIGH",
         truePositive: true,
         falsePositive: false,

@@ -56,3 +56,44 @@ jobs:
 
       - name: Assurance-run coverage gate
         run: pnpm --filter "@asst/assurance-run" test:coverage
+
+  ares-harness-compare:
+    name: ARES baseline vs harness comparison
+    runs-on: ubuntu-latest
+    needs: [build-test]
+    if: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+    defaults:
+      run:
+        working-directory: deepagentsjs
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        with:
+          version: 10.29.2
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: deepagentsjs/.nvmrc
+          cache: pnpm
+          cache-dependency-path: deepagentsjs/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run baseline-first harness comparison
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ARES_BENCHMARK_MODEL: claude-sonnet-4-20250514
+          ARES_BENCHMARK_MAX_CASES: 20
+          ARES_BENCHMARK_COMPARE_HARNESSES: team,static_rich,team_rich
+          ARES_BENCHMARK_COMPARISON_OUT_DIR: evals/ares-security/out
+        run: pnpm --filter "@deepagents/eval-ares-security" benchmark:compare
+
+      - name: Upload harness comparison artifacts
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        with:
+          name: ares-harness-comparison
+          path: |
+            deepagentsjs/evals/ares-security/out/harness-comparison.json
+            deepagentsjs/evals/ares-security/out/harness-comparison.md

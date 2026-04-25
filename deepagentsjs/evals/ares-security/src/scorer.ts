@@ -1,12 +1,11 @@
-import type { EvaluationResult, Finding } from "./protocol.js";
-import type { VulnerabilityCase } from "./loader.js";
+import type { EvaluationResult, Finding, VulnerabilityCase } from "./protocol.js";
 
 /**
  * Hybrid Scorer: Detection + PoC + Remediation Evaluation
  * 
  * Evaluates agent responses across three dimensions:
  * 1. Vulnerability detection (TP/FP/FN)
- * 2. PoC quality (exploit clarity,真实性)
+ * 2. PoC quality (exploit clarity, realism)
  * 3. Remediation quality ( correctness, completeness)
  */
 
@@ -36,7 +35,7 @@ export interface RemediationScore {
   quality: number; // 0-1
   hasGuard: boolean;
   hasValidation: boolean;
-  compiles: boolean;
+  hasErrorHandling: boolean;
 }
 
 export interface AgentResponse {
@@ -54,18 +53,30 @@ export function scoreDetection(
   reference: VulnerabilityCase
 ): DetectionScore {
   const refVulns = reference.vulnerabilities.map(v => v.toLowerCase());
-  const respTypes = response.findings.map(f => f.type.toLowerCase());
+  const refCategory = reference.category.toLowerCase();
 
   // Match detected to reference
   const matched: string[] = [];
   const missed: string[] = [];
 
   for (const ref of refVulns) {
-    const found = respTypes.find(rt =>
-      rt.includes(ref.slice(0, 20)) || ref.includes(rt)
-    );
+    const found = response.findings.find(f => {
+      const type = f.type.toLowerCase();
+      const desc = f.description.toLowerCase();
+
+      // Explicit category match
+      if (type === refCategory && type !== "other") return true;
+      // Type mentioned in reference text
+      if (ref.includes(type) && type !== "other") return true;
+      
+      // Token overlap heuristic for description matching
+      const refTokens = ref.split(/\\W+/).filter(t => t.length > 3);
+      const matchedTokens = refTokens.filter(t => desc.includes(t));
+      return refTokens.length > 0 && matchedTokens.length >= refTokens.length * 0.5;
+    });
+
     if (found) {
-      matched.push(found);
+      matched.push(found.type);
     } else {
       missed.push(ref);
     }
@@ -125,7 +136,7 @@ export function scoreRemediation(
   // Check for specific fixes
   const hasGuard = /require!|invoke|emit|CpiContext/i.test(remediation);
   const hasValidation = /owner|is_signer|signer|validate/i.test(remediation);
-  const compiles = /ok_or|unwrap|checked/i.test(remediation);
+  const hasErrorHandling = /ok_or|unwrap|checked/i.test(remediation);
 
   // Additional heuristics based on reference vulnerability types
   let quality = 0;
@@ -140,13 +151,14 @@ export function scoreRemediation(
 
   quality += hasGuard ? 0.2 : 0;
   quality += hasValidation ? 0.2 : 0;
+  quality += hasErrorHandling ? 0.1 : 0;
   quality = Math.min(quality, 1);
 
   return {
     quality,
     hasGuard,
     hasValidation,
-    compiles,
+    hasErrorHandling,
   };
 }
 
@@ -163,15 +175,10 @@ export function scoreResponse(
   const poc = scorePoc(response, reference);
   const remediation = scoreRemediation(response, reference);
 
-  const overallQuality = (
-    (detection.truePositive ? 0.5 : 0) * 0.4 +
-    poc.quality * 0.3 +
-    remediation.quality * 0.3
-  );
-
   return {
     caseId: reference.id,
     detected: response.findings.length > 0,
+    isVulnerable: reference.vulnerabilities.length > 0,
     severity: response.findings[0]?.severity || null,
     truePositive: detection.truePositive,
     falsePositive: detection.falsePositive,

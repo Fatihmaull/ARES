@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { autoTable } from "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import type { BenchmarkMetrics, EvaluationResult } from "./protocol.js";
 
 export interface ReportConfig {
@@ -81,7 +81,7 @@ export function generateReport(
 
   autoTable(doc, {
     startY: 55,
-    startX: 120,
+    margin: { left: 120 },
     head: [qualityData[0]],
     body: qualityData.slice(1),
     theme: "striped",
