@@ -1,4 +1,4 @@
-# ASST — ARES Solana Security Tool
+### ARES Solana Security Tool
 
 **ARES Solana Security Tool** (**ASST**) — a multi-agent security stack for
 teams shipping Solana (and related) software. Deployed as **Assurance Run**:
