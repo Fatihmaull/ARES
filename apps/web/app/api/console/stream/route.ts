@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ASSTPersistenceSQLite } from "@ares/engine";
-import { join } from "node:path";
-
-const DEMO_LOGS = [
-  {
-    source: "ARES",
-    level: "security" as const,
-    message: "Telemetry stream online (demo — no chat history yet).",
-  },
-  {
-    source: "System",
-    level: "info" as const,
-    message: "Persistence ready. Run a scan or chat to populate history.",
-  },
-];
+import { createPublicOrchestrator } from "@/lib/engine-factory";
+import { enforceRateLimit, requireApiKey } from "@/lib/api";
 
 export async function GET(req: NextRequest) {
+  const auth = requireApiKey(req);
+  if (!auth.ok) return auth.response;
+  const { requestId } = auth;
+  const rate = enforceRateLimit(req, requestId, "console-stream", 30);
+  if (!rate.ok) return rate.response;
+
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
@@ -40,44 +33,29 @@ export async function GET(req: NextRequest) {
     req.signal.addEventListener("abort", cleanup);
 
     try {
-      // Establish the stream immediately (avoids proxy/dev idle timeouts; no LLM init).
       await writeRaw(": sse-open\n\n");
 
-      const repoRoot = join(process.cwd(), "../..");
-      const persistence = new ASSTPersistenceSQLite(repoRoot);
-      await persistence.init();
-
-      const history = await persistence.getHistory(20);
+      const orchestrator = createPublicOrchestrator();
+      await orchestrator.init();
+      const history = await orchestrator.getRecentHistory(20);
       const chronological = [...history].reverse();
 
-      if (chronological.length === 0) {
-        const now = new Date().toISOString();
-        for (const row of DEMO_LOGS) {
-          await send({
-            type: "log",
-            id: `demo-${row.source}-${row.message.slice(0, 12)}`,
-            ...row,
-            timestamp: now,
-          });
-          await new Promise((r) => setTimeout(r, 80));
-        }
-      } else {
-        for (const msg of chronological) {
-          await send({
-            type: "log",
-            source: msg.role === "user" ? "Operator" : "ARES",
-            level: msg.role === "user" ? "info" : "security",
-            message: msg.content,
-            timestamp: msg.timestamp,
-          });
-          await new Promise((r) => setTimeout(r, 100));
-        }
+      for (const msg of chronological) {
+        await send({
+          type: "log",
+          source: msg.role === "user" ? "Operator" : "ARES",
+          level: msg.role === "user" ? "info" : "security",
+          message: msg.content,
+          timestamp: msg.timestamp,
+        });
+        await new Promise((r) => setTimeout(r, 100));
       }
 
       interval = setInterval(async () => {
         try {
           await send({
             type: "heartbeat",
+            requestId,
             timestamp: new Date().toISOString(),
           });
         } catch {
@@ -89,6 +67,7 @@ export async function GET(req: NextRequest) {
       try {
         await send({
           type: "error",
+          requestId,
           message: "Failed to open persistence stream.",
         });
       } catch {

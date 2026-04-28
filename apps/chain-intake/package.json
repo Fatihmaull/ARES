@@ -5,6 +5,9 @@
   "type": "module",
   "description": "Helius webhook receiver + PostgreSQL + backfill + evidence export for Assurance Run",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "node --import tsx src/server.ts",
+    "lint": "tsc --noEmit",
     "start": "node --import tsx src/server.ts",
     "backfill": "node --import tsx scripts/backfill.ts",
     "export-evidence": "node --import tsx scripts/export-evidence.ts",

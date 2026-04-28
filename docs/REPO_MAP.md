@@ -8,8 +8,7 @@ pointer to its own `README.md` when one exists.
 
 ```
 ASST/
-├── apps/                        Deployable surfaces (CLI, web, MCP, chain intake)
-│   ├── asst-cli/                @asst/cli — terminal client
+├── apps/                        Deployable surfaces (web, MCP, chain intake)
 │   ├── web/                     @asst/web — Next.js dashboard + public API
 │   ├── mcp-server/              @asst/mcp-server — MCP stdio server for Cursor / Claude
 │   └── chain-intake/            @asst/chain-intake — Helius → Postgres → manifest
@@ -27,7 +26,7 @@ ASST/
 ├── scripts/                     Ad-hoc automation (Colosseum Copilot scan, etc.)
 ├── analysis/                    Optional positioning / revenue-forecast notebooks
 ├── assurance/                   (gitignored) generated run manifests & SARIF output
-├── .asst/                       (gitignored) local CLI state (sqlite, config)
+├── .asst/                       (gitignored) local runtime state (sqlite, reports)
 ├── .superstack/                 Internal planning notes (not product code)
 ├── .github/                     CI workflows
 │
@@ -40,8 +39,6 @@ ASST/
 ├── COMPETITORS.md / PRD.md      Market + product spec
 ├── WALKTHROUGH.md               End-to-end demo script
 ├── .env.example                 Template for root env vars (copy to .env.local)
-├── Launch_ASST.bat / .ps1       Windows launchers for the CLI
-├── launch-asst.sh               POSIX launcher for the CLI
 ├── pnpm-workspace.yaml          pnpm workspace config (packages/* + apps/*)
 └── package.json                 Root — runs `pnpm -r build|dev`
 ```
@@ -60,7 +57,6 @@ ASST/
 | "Where is the web API for /api/chat?"                        | `apps/web/app/api/chat/route.ts`                         |
 | "Where does the web enforce read-only?"                      | `apps/web/lib/engine-factory.ts`                         |
 | "Where are the MCP tool bindings?"                           | `apps/mcp-server/src/server.ts`                          |
-| "Where is the CLI command router?"                           | `apps/asst-cli/src/asst.ts`                              |
 | "Where does Helius push webhook data?"                       | `apps/chain-intake/src/server.ts`                        |
 | "Where is the assurance manifest writer?"                    | `deepagentsjs/examples/assurance-run/write-run-manifest.ts` |
 | "Where are skills authored?"                                 | `.agents/skills/<skill-name>/SKILL.md`                   |

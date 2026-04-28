@@ -33,7 +33,7 @@ Sanity check the engine:
 
 ```bash
 pnpm --filter @ares/engine build
-pnpm --filter @asst/cli test
+pnpm --filter @asst/web test
 ```
 
 ## 2. Workspace structure — recap
@@ -50,13 +50,11 @@ pnpm --filter @asst/cli test
 | ---------------------- | ------------------------------------------------------------ |
 | Build everything       | `pnpm -r build`                                              |
 | Typecheck (workspaces) | `pnpm typecheck`                                             |
-| CLI dev loop           | `pnpm --filter @asst/cli dev`                                |
-| CLI compiled run       | `pnpm --filter @asst/cli start`                              |
 | Web dev server         | `pnpm --filter @asst/web dev`                                |
 | MCP server dev         | `pnpm --filter @asst/mcp-server dev`                         |
 | Chain intake           | `pnpm --filter @asst/chain-intake start`                     |
 | Engine typecheck       | `pnpm --filter @ares/engine build`                           |
-| CLI tests              | `pnpm --filter @asst/cli test`                               |
+| Web tests              | `pnpm --filter @asst/web test`                               |
 
 ## 4. Code conventions
 
@@ -107,9 +105,7 @@ pnpm --filter @asst/cli test
 
 1. Extend the switch in `packages/engine/src/config/model-factory.ts`.
 2. Add the required `OPENAI_API_KEY`-style env var.
-3. Update `ensureConfig` in `apps/asst-cli/src/asst.ts` so it only prompts
-   for the key when the user picks that provider.
-4. Document in `packages/engine/README.md` and `apps/asst-cli/README.md`.
+3. Document in `packages/engine/README.md` and `apps/web/README.md`.
 
 ### Add a new web API route
 
@@ -129,7 +125,7 @@ pnpm --filter @asst/cli test
 - Before opening a PR:
   - `pnpm -r build` (everything compiles)
   - `pnpm typecheck` when your package defines a `typecheck` script
-  - `pnpm --filter @asst/cli test` (unit tests pass)
+  - `pnpm --filter @asst/web test` (unit tests pass)
   - Update any affected `README.md`.
 
 ## 7. Security-review checklist

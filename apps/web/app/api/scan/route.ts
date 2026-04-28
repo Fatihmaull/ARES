@@ -1,7 +1,13 @@
-import { NextResponse } from "next/server";
 import { createPublicOrchestrator } from "@/lib/engine-factory";
+import { apiError, apiSuccess, enforceRateLimit, requireApiKey } from "@/lib/api";
 
 export async function POST(req: Request) {
+  const auth = requireApiKey(req);
+  if (!auth.ok) return auth.response;
+  const { requestId } = auth;
+  const rate = enforceRateLimit(req, requestId, "scan", 10);
+  if (!rate.ok) return rate.response;
+
   try {
     const body = await req.json();
     const { target, model } = body ?? {};
@@ -18,20 +24,20 @@ export async function POST(req: Request) {
       console.error("[ARES Scan Error]:", err);
     });
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess(requestId, {
+      status: "queued",
       message: "Security scan initiated successfully.",
-      target: target ?? ".",
+      target: typeof target === "string" ? target : ".",
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
     console.error("API Scan Route Error:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to initiate ARES scan",
-        details: error.message || "Unknown execution error",
-      },
-      { status: 500 },
+    return apiError(
+      requestId,
+      "INTERNAL_ERROR",
+      "Failed to initiate ARES scan.",
+      500,
+      error.message || "Unknown execution error",
     );
   }
 }

@@ -16,24 +16,19 @@
  *                          engine.
  */
 import { Orchestrator } from "@ares/engine";
+import { resolveRepoRoot } from "./paths";
 
 export interface PublicOrchestratorOptions {
   repoRoot?: string;
   model?: string;
 }
 
-export function createPublicOrchestrator(opts: PublicOrchestratorOptions = {}) {
-  const repoRoot = opts.repoRoot ?? process.cwd();
+if (process.env.ASST_WEB_ALLOW_WRITE !== "1") {
+  process.env.ASST_ALLOW_WRITE = "0";
+}
 
-  // Block mutating tools unless explicitly enabled for this host.
-  if (process.env.ASST_WEB_ALLOW_WRITE !== "1") {
-    process.env.ASST_ALLOW_WRITE = "0";
-    // Ensure any legacy global permission hook denies by default on web.
-    (globalThis as any).ARES_ASK_PERMISSION = async (msg: string) => {
-      console.warn("[ARES web] Denied tool execution by default:", msg);
-      return false;
-    };
-  }
+export function createPublicOrchestrator(opts: PublicOrchestratorOptions = {}) {
+  const repoRoot = opts.repoRoot ?? resolveRepoRoot();
 
   return new Orchestrator(repoRoot, { model: opts.model });
 }

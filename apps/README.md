@@ -5,7 +5,6 @@ as a workspace dependency and never duplicate engine logic.
 
 | App                  | Package name          | Purpose                                                                       |
 | -------------------- | --------------------- | ----------------------------------------------------------------------------- |
-| `asst-cli/`          | `@asst/cli`           | Interactive terminal client (`asst chat`, `asst scan`, `asst watch`, etc.)    |
 | `web/`               | `@asst/web`           | Next.js dashboard + public API routes. Future public product surface.         |
 | `mcp-server/`        | `@asst/mcp-server`    | MCP (stdio) server that exposes assurance tools to Cursor / Claude Desktop.   |
 | `chain-intake/`      | `@asst/chain-intake`  | Helius webhook receiver → Postgres. Feeds the assurance manifest pipeline.    |

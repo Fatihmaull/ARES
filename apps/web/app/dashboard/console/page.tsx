@@ -118,15 +118,16 @@ export default function ConsolePage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: cmd })
+        body: JSON.stringify({ prompt: cmd }),
       });
       const data = await res.json();
+      const responseMessage = data?.data?.response || data?.response || "Command executed successfully.";
       
       const agentMsg: LogEntry = {
         id: (Date.now() + 1).toString(),
         source: 'ARES',
         level: 'security',
-        message: data.response || "Command executed successfully.",
+        message: responseMessage,
         timestamp: new Date().toISOString()
       };
       setLogs(prev => [...prev, agentMsg]);

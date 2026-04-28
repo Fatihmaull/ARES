@@ -269,4 +269,14 @@ export class Orchestrator {
   async close() {
     await this.persistence.close();
   }
+
+  async getRecentHistory(limit = 20): Promise<{ role: string; content: string; timestamp: string }[]> {
+    await this.init();
+    const rows = await this.persistence.getHistory(limit);
+    return rows.map((row: any) => ({
+      role: row.role,
+      content: row.content,
+      timestamp: row.timestamp,
+    }));
+  }
 }

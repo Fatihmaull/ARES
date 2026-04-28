@@ -33,19 +33,17 @@ Given a Solana repository, ASST can:
            │  model factory · skills loader · sqlite store  │    logic
            └────────────────────────────────────────────────┘
                                    ▲
-               ┌───────────────────┼───────────────────┬────────────────────┐
-               │                   │                   │                    │
-         ┌──────────┐       ┌─────────────┐      ┌────────────┐      ┌────────────┐
-         │ @asst/cli│       │  @asst/web  │      │@asst/mcp-  │      │@asst/chain-│
-         │ (terminal)│      │  (Next.js)  │      │ server     │      │ intake     │
-         └──────────┘       └─────────────┘      └────────────┘      └────────────┘
-              HITL              public API           stdio MCP          Helius → PG
-            prompts          (read-only by          (read-only
-                              default)               tools only)
+               ┌───────────────────┼───────────────────┐
+               │                   │                   │
+         ┌─────────────┐      ┌────────────┐      ┌────────────┐
+         │  @asst/web  │      │@asst/mcp-  │      │@asst/chain-│
+         │  (Next.js)  │      │ server     │      │ intake     │
+         └─────────────┘      └────────────┘      └────────────┘
+             public API         stdio MCP          Helius → PG
 ```
 
 - **All agent logic** lives in `packages/engine/` (`@ares/engine`).
-- **Every surface** (CLI, web, MCP) imports from `@ares/engine`. No duplication.
+- **Every active surface** (web, MCP, chain-intake) imports from `@ares/engine`. No duplication.
 - **Public surfaces** (web) default to read-only; mutating tools require
   explicit opt-in + per-call HITL confirmation.
 
@@ -54,7 +52,6 @@ Given a Solana repository, ASST can:
 | Path | What |
 | ---- | ---- |
 | `packages/engine/` | `@ares/engine` — orchestrator, sub-agents, tools, persistence, skills loader. See [`packages/engine/README.md`](./packages/engine/README.md). |
-| `apps/asst-cli/` | `asst` terminal client. See [`apps/asst-cli/README.md`](./apps/asst-cli/README.md). |
 | `apps/web/` | Next.js marketing site, dashboard, `/api/*`. See [`apps/web/README.md`](./apps/web/README.md). |
 | `apps/mcp-server/` | MCP stdio server for Cursor / Claude. See [`apps/mcp-server/README.md`](./apps/mcp-server/README.md). |
 | `apps/chain-intake/` | Helius webhook receiver + backfill. See [`apps/chain-intake/README.md`](./apps/chain-intake/README.md). |
@@ -77,12 +74,6 @@ pnpm -r build
 
 # Typecheck all packages that define a `typecheck` script
 pnpm typecheck
-
-# Interactive CLI (Windows)
-./Launch_ASST.bat
-
-# Interactive CLI (macOS / Linux)
-./launch-asst.sh
 
 # Web app
 pnpm --filter @asst/web dev    # http://localhost:3000
@@ -114,8 +105,7 @@ The public surface rule is: **read-only by default, mutations require HITL**.
 
 - Mutating tools (`write_file`, `run_terminal_cmd`) are produced by a factory
   that calls a permission callback before every write/exec.
-- The CLI installs an interactive prompt. The web uses a default-deny hook,
-  disabled entirely unless `ASST_WEB_ALLOW_WRITE=1` is set on the server.
+- The web uses default-deny write policy and protected API routes for production.
 - The MCP server doesn't register mutating tools at all.
 
 Details: [`packages/engine/README.md` § Security model](./packages/engine/README.md).

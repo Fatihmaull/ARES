@@ -1,37 +1,34 @@
-# ASST CLI Transformation Walkthrough
+# ASST Web-First Walkthrough
 
-This document outlines the changes made to transform ASST from a web-based tool into a powerful, agentic CLI tool.
+This walkthrough describes the web-first flow for ASST after CLI removal.
 
-## Major Changes
+## 1. Start services
 
-### 1. New CLI Package (`apps/asst-cli`)
-- Established a TypeScript-native package for the CLI.
-- Integrated `commander.js` for command routing.
-- Path: `apps/asst-cli/src/asst.ts`
+1. Install dependencies: `pnpm install`
+2. Start web app: `pnpm --filter @asst/web dev`
+3. Optional companion services:
+   - MCP server: `pnpm --filter @asst/mcp-server dev`
+   - Chain intake: `pnpm --filter @asst/chain-intake dev`
 
-### 2. Agentic Engine
-- Implemented `ASSTAgentEngine` using LangGraph.
-- Added 11+ security tools from the ARES engine.
-- Added file system and terminal execution tools with safety confirmations.
+## 2. Exercise the dashboard
 
-### 3. Persistence Layer
-- Integrated SQLite for session history.
-- The agent now remembers previous interactions within a session.
+1. Open `http://localhost:3000`
+2. Navigate to `/dashboard/overview`
+3. Verify API-backed panels load:
+   - posture
+   - findings
+   - reports
+   - agent metadata
 
-### 4. Windows Optimization
-- Created `Launch_ASST.bat` to allow one-click launch from the desktop.
-- Fixed terminal closure issues by adding explicit error handling and environment validation.
+## 3. Exercise console + APIs
 
-### 5. Two-Step Scan Workflow
-- Modified `asst scan` to first report findings and then propose fixes, as per requirements.
+1. Open `/dashboard/console`
+2. Send a command and verify `/api/chat` response appears in stream
+3. Trigger scan and verify `/api/scan` returns queued status
+4. Confirm deterministic response envelopes (`ok`, `requestId`, `data`)
 
-## How to Run
+## 4. Production hardening checks
 
-1. Open a terminal in the project root.
-2. Run `Launch_ASST.bat` (Windows) or `npx asst chat` (if installed).
-3. Ensure your `.env` file contains `OPENROUTER_API_KEY`.
-
-## Next Steps
-- [ ] Add more granular L1-L6 lane tools.
-- [ ] Enhance semantic search indexing.
-- [ ] Finalize the `asst init` onboarding flow.
+1. Set `ASST_WEB_API_KEY` and confirm protected routes require the key
+2. Validate report download path controls (`/api/reports/download?file=...`)
+3. Confirm route-level rate limiting behavior on hot endpoints

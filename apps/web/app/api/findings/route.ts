@@ -1,9 +1,14 @@
-import { NextResponse } from "next/server";
 import { getAssuranceData } from "@/lib/data";
+import { apiError, apiSuccess, requireApiKey } from "@/lib/api";
+import { resolveRepoRoot } from "@/lib/paths";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = requireApiKey(req);
+  if (!auth.ok) return auth.response;
+  const { requestId } = auth;
+
   try {
-    const { manifests, supplyChain, latest } = getAssuranceData();
+    const { supplyChain } = getAssuranceData();
 
     // Extract findings from all sources
     const findings: any[] = [];
@@ -11,7 +16,7 @@ export async function GET() {
     // From SARIF
     const fs = await import("node:fs");
     const path = await import("node:path");
-    const assuranceDir = path.join(process.cwd(), "../../assurance");
+    const assuranceDir = path.join(resolveRepoRoot(), "assurance");
     const sarifPath = path.join(assuranceDir, "merged.sarif.json");
 
     if (fs.existsSync(sarifPath)) {
@@ -28,7 +33,9 @@ export async function GET() {
             line: r.locations?.[0]?.physicalLocation?.region?.startLine || 0,
           });
         }
-      } catch { /* non-critical */ }
+      } catch (error) {
+        console.warn("Failed to parse merged.sarif.json:", error);
+      }
     }
 
     // From supply chain
@@ -63,14 +70,16 @@ export async function GET() {
             });
           }
         }
-      } catch { /* non-critical */ }
+      } catch (error) {
+        console.warn("Failed to parse last-scan.json:", error);
+      }
     }
 
     // Sort by severity
     const severityOrder: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3, Informational: 4 };
     findings.sort((a, b) => (severityOrder[a.severity] || 4) - (severityOrder[b.severity] || 4));
 
-    return NextResponse.json({
+    return apiSuccess(requestId, {
       total: findings.length,
       bySeverity: {
         critical: findings.filter(f => f.severity === "Critical").length,
@@ -82,9 +91,6 @@ export async function GET() {
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: "Failed to load findings", message: error.message },
-      { status: 500 }
-    );
+    return apiError(requestId, "INTERNAL_ERROR", "Failed to load findings.", 500, error.message);
   }
 }

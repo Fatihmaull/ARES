@@ -47,10 +47,10 @@ export default function OverviewPage() {
         const agentsData = await agentsRes.json();
         const reportsData = await reportsRes.json();
         
-        setFindings(findingsData.findings || []);
-        setPosture(postureData);
-        setAgents(agentsData);
-        setReports(reportsData);
+        setFindings(findingsData?.data?.findings ?? findingsData?.findings ?? []);
+        setPosture(postureData?.data ?? postureData ?? null);
+        setAgents(agentsData?.data?.agents ?? agentsData ?? []);
+        setReports(reportsData?.data?.reports ?? reportsData ?? []);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
       } finally {
@@ -124,7 +124,7 @@ export default function OverviewPage() {
         />
         <StatCard 
           label="Assurance Reports" 
-          value={loading ? "..." : reports.length.toString()} 
+          value={loading ? "..." : (reports?.length ?? 0).toString()} 
           trend="Signed Archives" 
           icon={<TargetIcon className="w-5 h-5" />} 
         />

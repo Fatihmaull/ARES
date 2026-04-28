@@ -1,17 +1,34 @@
 import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { existsSync } from "node:fs";
+import { apiError, enforceRateLimit, requireApiKey } from "@/lib/api";
+import { ensureWithinRoot, resolveRepoRoot } from "@/lib/paths";
 
 export async function GET(req: Request) {
+  const auth = requireApiKey(req);
+  if (!auth.ok) return auth.response;
+  const { requestId } = auth;
+  const rate = enforceRateLimit(req, requestId, "report", 60);
+  if (!rate.ok) return rate.response;
+
   const { searchParams } = new URL(req.url);
   const repo = searchParams.get("repo") || "ASST";
-  
+
+  if (!/^[a-zA-Z0-9._ -]{1,80}$/.test(repo)) {
+    return apiError(requestId, "BAD_REQUEST", "Invalid report identifier.", 400);
+  }
+
   const fileName = `${repo} final analysis report.pdf`;
-  const filePath = join(process.cwd(), "../../assurance", fileName);
+  const assuranceDir = resolve(resolveRepoRoot(), "assurance");
+  const filePath = resolve(join(assuranceDir, fileName));
+
+  if (!ensureWithinRoot(assuranceDir, filePath)) {
+    return apiError(requestId, "FORBIDDEN", "Invalid report path.", 403);
+  }
 
   if (!existsSync(filePath)) {
-    return NextResponse.json({ error: "Report not found" }, { status: 404 });
+    return apiError(requestId, "NOT_FOUND", "Report not found.", 404);
   }
 
   try {
@@ -24,6 +41,6 @@ export async function GET(req: Request) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: "Failed to read report", details: error.message }, { status: 500 });
+    return apiError(requestId, "INTERNAL_ERROR", "Failed to read report.", 500, error.message);
   }
 }

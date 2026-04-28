@@ -1,15 +1,19 @@
-import { NextResponse } from "next/server";
 import { readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { getAssuranceData } from "@/lib/data";
+import { apiError, apiSuccess, requireApiKey } from "@/lib/api";
+import { resolveRepoRoot } from "@/lib/paths";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = requireApiKey(req);
+  if (!auth.ok) return auth.response;
+  const { requestId } = auth;
+
   try {
-    const data = await getAssuranceData();
-    // Corrected: latest check + better root detection
-    const repoRoot = data.latest?.repoRoot || process.cwd();
+    const data = getAssuranceData();
+    const repoRoot = data.latest?.repoRoot || resolveRepoRoot();
     const reportsDir = join(repoRoot, ".asst", "reports");
-    
+
     let reports: any[] = [];
 
     if (existsSync(reportsDir)) {
@@ -28,25 +32,25 @@ export async function GET() {
       });
     }
 
-    // Fallback/Mock if none exist yet for UI demonstration
-    if (reports.length === 0) {
-      reports = [
-        { id: 'rep-init', name: 'Initial System Manifest', type: 'compliance', date: new Date().toISOString().split('T')[0], status: 'verified', size: '0.1 MB' }
-      ];
-    }
-
-    return NextResponse.json(reports);
+    return apiSuccess(requestId, { reports });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError(requestId, "INTERNAL_ERROR", "Failed to list reports.", 500, error.message);
   }
 }
 
 export async function POST(req: Request) {
+  const auth = requireApiKey(req);
+  if (!auth.ok) return auth.response;
+  const { requestId } = auth;
+
   try {
-    // In a real scenario, this would trigger the report_synthesizer agent
-    // For now, we'll return a message that it's queued
-    return NextResponse.json({ message: "Synthesis request queued. ARES agents are aggregating logical buffers." });
+    const body = await req.json().catch(() => ({}));
+    return apiSuccess(requestId, {
+      status: "queued",
+      message: "Report synthesis request accepted.",
+      reportType: body?.reportType ?? "security_audit",
+    });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError(requestId, "INTERNAL_ERROR", "Failed to queue report synthesis.", 500, error.message);
   }
 }

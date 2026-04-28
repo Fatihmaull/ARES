@@ -15,10 +15,8 @@ auth + paid usage). Every API route therefore uses:
 import { createPublicOrchestrator } from "@/lib/engine-factory";
 ```
 
-`createPublicOrchestrator()` forces `ASST_ALLOW_WRITE=0` and installs a
-default-deny permission hook. Mutating tools (`write_file`,
-`run_terminal_cmd`) will refuse every call from the web surface unless you
-explicitly opt in with `ASST_WEB_ALLOW_WRITE=1` on the server.
+`createPublicOrchestrator()` keeps the web surface read-oriented by default
+(`ASST_ALLOW_WRITE=0` unless `ASST_WEB_ALLOW_WRITE=1` is explicitly set).
 
 Do **not** instantiate `new Orchestrator()` directly from a web route.
 
@@ -35,7 +33,7 @@ app/
     ├── scan/route.ts        POST /api/scan — orchestrator.runFullScan()
     ├── agents/route.ts      GET  /api/agents — sub-agent metadata
     ├── findings/route.ts    GET  /api/findings — aggregated SARIF + scan
-    ├── targets/route.ts     GET  /api/targets — persisted scan targets
+    ├── reports/route.ts     GET  /api/reports — report metadata
     └── console/stream/route.ts  SSE stream of recent agent activity
 lib/
 ├── engine-factory.ts        createPublicOrchestrator() — THE only way
@@ -58,10 +56,13 @@ Environment (read from `.env.local` at repo root):
 | `GOOGLE_API_KEY`          | yes*     | default Gemini orchestrator model                |
 | `OPENROUTER_API_KEY`      | when sub-agents use OpenRouter                   |
 | `ASST_ORCHESTRATOR_MODEL` | no       | override default model, e.g. `ollama:llama3.1`   |
+| `ASST_WEB_API_KEY`        | yes**    | required API key for protected `/api/*` routes   |
 | `ASST_WEB_ALLOW_WRITE`    | no       | set to `1` ONLY on trusted private deployments   |
+| `ASST_REPO_ROOT`          | no       | explicit repository root boundary for file access |
 | `SOLANA_RPC_URL`          | no       | override default `https://api.devnet.solana.com` |
 
-\* unless `ASST_ORCHESTRATOR_MODEL` points at a non-Google provider.
+\* unless `ASST_ORCHESTRATOR_MODEL` points at a non-Google provider.  
+\** in development only, routes allow missing key for local setup.
 
 ## Future: wallet-gated usage
 

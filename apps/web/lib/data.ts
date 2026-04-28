@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { resolveRepoRoot } from "./paths";
 
 // ─── Posture Score Computation ──────────────────────────────────────
 
@@ -30,7 +31,9 @@ function computePostureScore(latest: any, supplyChain: any, assuranceDir: string
       if (secretResult?.output?.includes("EXPOSURE") || secretResult?.output?.includes("WARNING")) {
         secretScore = 30;
       }
-    } catch { /* non-critical */ }
+    } catch (error) {
+      console.warn("Failed to parse last-scan.json for secret score:", error);
+    }
   }
   layers.push({ name: "L1 Secret Hygiene", score: secretScore, grade: computeGrade(secretScore) });
 
@@ -42,7 +45,9 @@ function computePostureScore(latest: any, supplyChain: any, assuranceDir: string
       const sarif = JSON.parse(readFileSync(sarifPath, "utf8"));
       const count = sarif?.runs?.[0]?.results?.length || 0;
       saScore = Math.max(0, 100 - count * 10);
-    } catch { /* non-critical */ }
+    } catch (error) {
+      console.warn("Failed to parse merged.sarif.json for static analysis score:", error);
+    }
   } else if (latest?.static_analysis?.semgrep?.status === "ok") {
     saScore = 95;
   }
@@ -68,7 +73,9 @@ function computePostureScore(latest: any, supplyChain: any, assuranceDir: string
       } else if (rug) {
         defiScore = 90;
       }
-    } catch { /* non-critical */ }
+    } catch (error) {
+      console.warn("Failed to parse last-scan.json for DeFi score:", error);
+    }
   }
   layers.push({ name: "L4 DeFi / Rug Pull", score: defiScore, grade: computeGrade(defiScore) });
 
@@ -99,7 +106,7 @@ function computePostureScore(latest: any, supplyChain: any, assuranceDir: string
 // ─── Main Data Loader ───────────────────────────────────────────────
 
 export function getAssuranceData() {
-  const assuranceDir = join(process.cwd(), "../../assurance");
+  const assuranceDir = join(resolveRepoRoot(), "assurance");
   
   if (!existsSync(assuranceDir)) {
     return { 

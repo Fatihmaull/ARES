@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
 import { getAssuranceData } from "@/lib/data";
+import { apiError, apiSuccess, requireApiKey } from "@/lib/api";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = requireApiKey(req);
+  if (!auth.ok) return auth.response;
+  const { requestId } = auth;
+
   try {
     const { manifests } = getAssuranceData();
 
@@ -14,15 +18,12 @@ export async function GET() {
       agentCount: m.agent_count || 0,
     }));
 
-    return NextResponse.json({
+    return apiSuccess(requestId, {
       total: runs.length,
       runs,
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: "Failed to list runs", message: error.message },
-      { status: 500 }
-    );
+    return apiError(requestId, "INTERNAL_ERROR", "Failed to list runs.", 500, error.message);
   }
 }
