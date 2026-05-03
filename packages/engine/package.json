@@ -4,6 +4,16 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./sub-agent-public-manifest": {
+      "types": "./dist/sub-agent-public-manifest.d.ts",
+      "import": "./dist/sub-agent-public-manifest.js"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json --noEmit",

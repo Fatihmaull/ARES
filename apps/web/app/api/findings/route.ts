@@ -1,9 +1,9 @@
 import { getAssuranceData } from "@/lib/data";
-import { apiError, apiSuccess, requireApiKey } from "@/lib/api";
+import { apiError, apiSuccess, requireApiKeyOrPublic } from "@/lib/api";
 import { resolveRepoRoot } from "@/lib/paths";
 
 export async function GET(req: Request) {
-  const auth = requireApiKey(req);
+  const auth = requireApiKeyOrPublic(req);
   if (!auth.ok) return auth.response;
   const { requestId } = auth;
 

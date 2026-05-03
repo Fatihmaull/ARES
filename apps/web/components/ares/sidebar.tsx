@@ -9,6 +9,7 @@ import {
   Search,
   Activity,
   FileText,
+  CreditCard,
   Settings,
   Terminal,
   ChevronLeft,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/lib/ares/store";
+import { AdminSidebarLink } from "./admin-sidebar-link";
 import { Logo, LogoMark } from "./logo";
 import { StatusBadge } from "./status-badge";
 
@@ -26,6 +28,7 @@ const navItems = [
   { name: "Investigations", href: "/dashboard/investigations", icon: Search },
   { name: "Agents", href: "/dashboard/agents", icon: Activity },
   { name: "Reports", href: "/dashboard/reports", icon: FileText },
+  { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
   { name: "Console", href: "/dashboard/console", icon: Terminal },
 ];
 
@@ -83,6 +86,7 @@ export function Sidebar() {
             </Link>
           );
         })}
+        <AdminSidebarLink collapsed={sidebarCollapsed} pathname={pathname} />
       </nav>
 
       <div className="p-4 border-t border-border mt-auto">

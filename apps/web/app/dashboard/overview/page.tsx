@@ -23,6 +23,7 @@ import {
 } from "recharts";
 import { useState, useEffect } from "react";
 import { Detection, Target, Agent } from "@/lib/ares/mock-data";
+import { safeResponseJson } from "@/lib/safe-response-json";
 import { cn } from "@/lib/utils";
 
 export default function OverviewPage() {
@@ -40,13 +41,16 @@ export default function OverviewPage() {
           fetch("/api/findings"),
           fetch("/api/posture"),
           fetch("/api/agents"),
-          fetch("/api/reports")
+          fetch("/api/reports"),
         ]);
-        const findingsData = await findingsRes.json();
-        const postureData = await postureRes.json();
-        const agentsData = await agentsRes.json();
-        const reportsData = await reportsRes.json();
-        
+
+        const [findingsData, postureData, agentsData, reportsData] = await Promise.all([
+          safeResponseJson<any>(findingsRes),
+          safeResponseJson<any>(postureRes),
+          safeResponseJson<any>(agentsRes),
+          safeResponseJson<any>(reportsRes),
+        ]);
+
         setFindings(findingsData?.data?.findings ?? findingsData?.findings ?? []);
         setPosture(postureData?.data ?? postureData ?? null);
         setAgents(agentsData?.data?.agents ?? agentsData ?? []);

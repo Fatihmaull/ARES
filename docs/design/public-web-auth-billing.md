@@ -1,6 +1,6 @@
 # Design — Public web: auth, billing, rate limiting
 
-> **Status:** DRAFT — for review before implementation.
+> **Status:** DRAFT — implementation underway; locked product decisions live in [`decisions-auth-billing-v1.md`](./decisions-auth-billing-v1.md).
 > **Target surface:** `apps/web` only. CLI and MCP are untouched.
 > **One-liner:** anonymous preview → Solana wallet sign-in → free quota per
 > wallet → on-chain USDC payment unlocks paid quota.
@@ -260,8 +260,9 @@ apps/web/lib/
 │   ├── pool.ts               shared pg Pool (chain-intake + web)
 │   └── migrations/           node-pg-migrate scripts
 ├── ratelimit/
-│   ├── ip.ts
-│   └── wallet.ts
+│   ├── shared.ts             Upstash limiters (Redis via `@upstash/redis/cloudflare` — Edge-safe with middleware)
+│   ├── ip.ts                 60/min IP bucket (middleware)
+│   └── wallet.ts             30/min wallet bucket (`/api/chat`, `/api/scan`)
 └── engine-factory.ts         (exists) createPublicOrchestrator()
 ```
 
@@ -361,6 +362,8 @@ leaves the app in a deployable state.
 
 ## 11. Open questions for review
 
+**Resolved — see [`decisions-auth-billing-v1.md`](./decisions-auth-billing-v1.md).** The numbered prompts below are kept for historical context only.
+
 1. **Treasury custody.** Simple wallet for now, multisig (Squads v4) before
    mainnet — agreed?
 2. **Pricing unit.** USDC-denominated bundles, or credits pegged to fiat?
@@ -380,10 +383,11 @@ leaves the app in a deployable state.
 
 ## 12. What I need from you to start coding
 
-- Sign-off on §3 (SIWS + JWT cookie over NextAuth).
-- Sign-off on §4 (memo-based USDC deposits via chain-intake, not an on-chain
-  escrow program).
-- Answers to the 7 questions in §11 (or "you pick" on any of them — I'll
-  pick the industry-default).
+**Done:** §3–§4 approach and §11 answers are recorded in [`decisions-auth-billing-v1.md`](./decisions-auth-billing-v1.md). Implementation proceeds at §10 **P1** onward.
 
-Once those land I'll start at P1 and work down the list.
+---
+
+## Related specs
+
+- [Architecture Contract Spec v1](./architecture-contract-spec-v1.md)
+- [Billing & Metering Spec v1](./billing-metering-spec-v1.md)

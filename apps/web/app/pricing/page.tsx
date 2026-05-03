@@ -164,7 +164,11 @@ function Tiers() {
           </ul>
 
           <Link
-            href="/dashboard/overview"
+            href={
+              t.name === "Starter"
+                ? "/dashboard/overview"
+                : "/dashboard/billing"
+            }
             className={cn(
               "group inline-flex items-center justify-between gap-4 px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors",
               t.featured
@@ -191,10 +195,10 @@ function OnDemand() {
           Ad-hoc scans routed through Solana Pay. Start from five dollars.
         </p>
         <Link
-          href="/dashboard/overview"
+          href="/dashboard/billing"
           className="group mt-3 inline-flex items-center justify-between gap-4 px-3 py-2.5 w-fit bg-foreground text-background font-mono text-[11px] uppercase tracking-[0.18em] hover:bg-primary transition-colors"
         >
-          Run Single Audit
+          Top up credits
           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
         </Link>
       </div>
@@ -258,7 +262,7 @@ const FAQS = [
   },
   {
     q: "Do you offer on-chain settlement?",
-    a: "Solana Pay and x402 are native. Stripe is available as a fiat bridge for enterprise.",
+    a: "Yes — wallet holders can buy ASST unit bundles with USDC via memo-attributed transfers (treasury address shown on Dashboard → Billing). Solana Pay / x402 integrations remain on the roadmap; Stripe can bridge fiat for enterprise.",
   },
 ];
 

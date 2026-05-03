@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { Sidebar } from "@/components/ares/sidebar";
-import { Bell, Search, User, ChevronDown, X, Moon, Sun } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { SolanaWalletProviders } from "@/components/wallet/solana-wallet-providers";
+import { WalletSessionControls } from "@/components/wallet/wallet-session-controls";
+import { Bell, Search, X, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useUIStore } from "@/lib/ares/store";
 
@@ -18,7 +19,8 @@ export default function DashboardLayout({
   const isDark = theme === "dark";
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
+    <SolanaWalletProviders>
+      <div className="flex min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         {/* TopBar */}
@@ -70,19 +72,8 @@ export default function DashboardLayout({
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full border-2 border-card" />
             </Link>
-            <div className="h-8 w-px bg-border mx-1" />
-            <Link href="/dashboard/profile" className="flex items-center gap-3 p-1.5 hover:bg-secondary/50 rounded-xl transition-all border border-transparent hover:border-border group">
-              <div className="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center overflow-hidden">
-                 <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center">
-                    <User className="w-4 h-4 text-primary" />
-                 </div>
-              </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-[14px] font-semibold leading-tight">Alice Operator</p>
-                <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-tighter">Security Lead</p>
-              </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-foreground ml-1 transition-colors" />
-            </Link>
+            <div className="h-8 w-px bg-border mx-1 hidden sm:block" />
+            <WalletSessionControls />
           </div>
         </header>
 
@@ -90,6 +81,7 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
-    </div>
+      </div>
+    </SolanaWalletProviders>
   );
 }

@@ -63,6 +63,12 @@ export function SiteNav() {
             Sign In
           </Link>
           <Link
+            href="/dashboard/billing"
+            className="hidden lg:inline hover:text-foreground transition-colors"
+          >
+            Top up
+          </Link>
+          <Link
             href="/dashboard/overview"
             className="group inline-flex items-center gap-1.5 text-foreground"
           >

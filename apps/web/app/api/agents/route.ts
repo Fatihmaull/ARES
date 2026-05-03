@@ -1,13 +1,13 @@
-import { SUB_AGENT_CONFIGS } from "@ares/engine";
-import { apiError, apiSuccess, requireApiKey } from "@/lib/api";
+import { SUB_AGENT_PUBLIC_LIST } from "@ares/engine/sub-agent-public-manifest";
+import { apiError, apiSuccess, requireApiKeyOrPublic } from "@/lib/api";
 
 export async function GET(req: Request) {
-  const auth = requireApiKey(req);
+  const auth = requireApiKeyOrPublic(req);
   if (!auth.ok) return auth.response;
   const { requestId } = auth;
 
   try {
-    const agents = SUB_AGENT_CONFIGS.map((config, index) => ({
+    const agents = SUB_AGENT_PUBLIC_LIST.map((config, index) => ({
       id: `a-${index + 1}`,
       name: config.name
         .split("_")

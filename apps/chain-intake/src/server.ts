@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 
 import { getPool } from "./db.js";
+import { applyBillingDeposits } from "./credits-on-deposit.js";
 import { parseWebhookBody, upsertParsedTransactions } from "./ingest.js";
 
 const webhookSecret = process.env.WEBHOOK_SHARED_SECRET?.trim();
@@ -57,6 +58,18 @@ app.post("/webhooks/helius", async (c) => {
   try {
     const { inserted, skipped, triggersInserted, triggerCounts } =
       await upsertParsedTransactions(client, txs, "webhook");
+
+    let billingCredited = 0;
+    let billingSkipped = 0;
+    try {
+      const depositResult = await applyBillingDeposits(client, txs);
+      billingCredited = depositResult.credited;
+      billingSkipped = depositResult.skipped;
+    } catch (billingErr) {
+      const msg = billingErr instanceof Error ? billingErr.message : String(billingErr);
+      logError("billing_deposit_failed", { requestId, message: msg });
+    }
+
     logInfo("webhook_ingested", {
       requestId,
       received: txs.length,
@@ -73,6 +86,10 @@ app.post("/webhooks/helius", async (c) => {
       triggers: {
         inserted: triggersInserted,
         counts: triggerCounts,
+      },
+      billing_deposits: {
+        credited: billingCredited,
+        skipped: billingSkipped,
       },
     });
   } catch (error) {

@@ -366,3 +366,14 @@ To start implementation safely, the next artifacts should be:
    - selected 12-15 skills with adapters, tool needs, cost class, policy class
 
 This gives engineering a stable, buildable foundation before code explosion.
+
+### P0 checklist (satisfied in-repo)
+
+| Artifact | Location |
+|----------|----------|
+| Architecture Contract Spec v1 | [`docs/design/architecture-contract-spec-v1.md`](./architecture-contract-spec-v1.md) |
+| Billing & Metering Spec v1 | [`docs/design/billing-metering-spec-v1.md`](./billing-metering-spec-v1.md) |
+| Wave A Skill Manifest | [`docs/design/wave-a-skill-manifest.md`](./wave-a-skill-manifest.md) |
+| Auth/billing decisions (§11 lock + §12 sign-off) | [`docs/design/decisions-auth-billing-v1.md`](./decisions-auth-billing-v1.md) |
+
+Implementation of SIWS + ledger follows [`docs/design/public-web-auth-billing.md`](./public-web-auth-billing.md) rollout §10.

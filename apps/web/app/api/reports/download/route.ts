@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFileSync, existsSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { getAssuranceData } from "@/lib/data";
-import { apiError, enforceRateLimit, requireApiKey } from "@/lib/api";
+import { apiError, enforceRateLimit, requireApiKeyOrPublic } from "@/lib/api";
 import { ensureWithinRoot } from "@/lib/paths";
 
 export async function GET(req: NextRequest) {
-  const auth = requireApiKey(req);
+  const auth = requireApiKeyOrPublic(req);
   if (!auth.ok) return auth.response;
   const { requestId } = auth;
   const rate = enforceRateLimit(req, requestId, "reports-download", 60);

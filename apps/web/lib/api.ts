@@ -26,7 +26,7 @@ export interface ApiSuccessBody<T> {
 
 const rateBuckets = new Map<string, { count: number; windowStart: number }>();
 
-function getClientIp(req: Request): string {
+export function getClientIp(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) {
     return forwarded.split(",")[0]?.trim() || "unknown";
@@ -34,8 +34,36 @@ function getClientIp(req: Request): string {
   return req.headers.get("x-real-ip") || "unknown";
 }
 
-function getRequestId(req: Request): string {
+export function getRequestId(req: Request): string {
   return req.headers.get("x-request-id") || crypto.randomUUID();
+}
+
+/**
+ * Public ingress gate for SIWS/anonymous flows.
+ * - Dev without ASST_WEB_API_KEY: operator bypass (legacy DX).
+ * - Prod without ASST_WEB_API_KEY: misconfiguration (fail closed).
+ * - With ASST_WEB_API_KEY: matching header bypasses quota/billing for automation.
+ */
+export function authenticateIngress(req: Request):
+  | { ok: false; response: NextResponse<ApiErrorBody> }
+  | { ok: true; requestId: string; operator: boolean } {
+  const requestId = getRequestId(req);
+  const secret = process.env.ASST_WEB_API_KEY?.trim();
+
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      // Public web: SIWS + anonymous flows do not require a shared API key.
+      return { ok: true, requestId, operator: false };
+    }
+    return { ok: true, requestId, operator: true };
+  }
+
+  const headerKey = req.headers.get("x-api-key");
+  if (headerKey && headerKey === secret) {
+    return { ok: true, requestId, operator: true };
+  }
+
+  return { ok: true, requestId, operator: false };
 }
 
 export function apiSuccess<T>(
@@ -80,6 +108,31 @@ export function requireApiKey(
     return { ok: true, requestId };
   }
 
+  const headerValue = req.headers.get("x-api-key");
+  if (headerValue !== expectedKey) {
+    return {
+      ok: false,
+      response: apiError(requestId, "UNAUTHORIZED", "Missing or invalid API key.", 401),
+    };
+  }
+  return { ok: true, requestId };
+}
+
+/**
+ * Browser-callable dashboard / assurance APIs: align with public ingress.
+ * - No `ASST_WEB_API_KEY`: allow same-origin UI (dev + prod).
+ * - Key set: require `x-api-key` (automation / scripts).
+ *
+ * Use `requireApiKey` for routes that must fail closed when no key is configured.
+ */
+export function requireApiKeyOrPublic(
+  req: Request,
+): { ok: true; requestId: string } | { ok: false; response: NextResponse<ApiErrorBody> } {
+  const requestId = getRequestId(req);
+  const expectedKey = process.env.ASST_WEB_API_KEY?.trim();
+  if (!expectedKey) {
+    return { ok: true, requestId };
+  }
   const headerValue = req.headers.get("x-api-key");
   if (headerValue !== expectedKey) {
     return {

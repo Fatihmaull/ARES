@@ -1,8 +1,8 @@
 import { getAssuranceData } from "@/lib/data";
-import { apiSuccess, requireApiKey } from "@/lib/api";
+import { apiSuccess, requireApiKeyOrPublic } from "@/lib/api";
 
 export async function GET(req: Request) {
-  const auth = requireApiKey(req);
+  const auth = requireApiKeyOrPublic(req);
   if (!auth.ok) return auth.response;
   const { requestId } = auth;
 

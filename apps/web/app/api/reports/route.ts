@@ -1,11 +1,11 @@
 import { readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { getAssuranceData } from "@/lib/data";
-import { apiError, apiSuccess, requireApiKey } from "@/lib/api";
+import { apiError, apiSuccess, requireApiKeyOrPublic } from "@/lib/api";
 import { resolveRepoRoot } from "@/lib/paths";
 
 export async function GET(req: Request) {
-  const auth = requireApiKey(req);
+  const auth = requireApiKeyOrPublic(req);
   if (!auth.ok) return auth.response;
   const { requestId } = auth;
 
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = requireApiKey(req);
+  const auth = requireApiKeyOrPublic(req);
   if (!auth.ok) return auth.response;
   const { requestId } = auth;
 
