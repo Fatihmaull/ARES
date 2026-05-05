@@ -20,6 +20,7 @@ This document consolidates everything from our discussion beginning at your prom
 - Web3-first login using Solana wallet SIWS (Sign-In With Solana / CAIP-122).
 - Wallet-based tiers + quota + credit model.
 - Pricing/usage inspired by modern AI products (clear tiers, quota, top-ups, usage tracking).
+- **PayAI (x402 facilitator)** is the **primary platform payment intake**: users pay through PayAI; **funds settle to ARES**; the platform **mints internal credits** from confirmed purchases. **Usage is still priced and debited only by the existing ARES metering schema** (Section 7–8)—PayAI does not replace or alter unit formulas, tool classes, or operation minimums.
 
 ### Scope model for large skill system
 - For 80+ skills, choose MVP-first rollout (not full catalog all at once).
@@ -34,6 +35,7 @@ This document consolidates everything from our discussion beginning at your prom
 - MVP-first skill onboarding.
 - Hybrid billing (quota + credits + metered usage).
 - Agent hierarchy redesign (5-tier target).
+- **PayAI / x402** as the **sole primary cash-in rail** for production (top-ups and paid tiers): pay-per-purchase flows go through the facilitator; **ARES ledger + metering** remains the system of record for entitlements and per-operation cost.
 
 ### Not chosen / excluded for now
 - Multi-chain auth (EVM + Solana) in v1.
@@ -61,9 +63,9 @@ ARES should function like:
 6. User consumes free quota or paid credits.
 7. User runs chat/scan/report workflows.
 8. If quota exhausted -> choose tier/top-up.
-9. Wallet sends USDC payment with attribution memo.
-10. Webhook credits wallet.
-11. User continues with unlocked usage.
+9. User completes purchase via **PayAI (x402)** (wallet / agent-native payment flow per [PayAI docs](https://docs.payai.network/introduction)).
+10. PayAI confirms settlement to ARES (webhook and/or API verification per integration spec); ARES records the payment and **credits the wallet** in `credits_ledger` according to **fixed bundle → credit mapping** (policy in our DB, not PayAI).
+11. User continues with unlocked usage; every tool/chat/scan still consumes credits per **Section 7–8** only.
 
 ### UX states required
 - Anonymous preview state.
@@ -84,7 +86,8 @@ ARES should function like:
 ### Core services
 - `apps/web` for API + UI.
 - Worker services (K8s deployments/jobs).
-- `apps/chain-intake` for on-chain webhook ingestion.
+- **PayAI settlement ingestion**: HTTP endpoint(s) and workers that verify PayAI/x402 settlement callbacks (signatures, idempotency) and append **credit grants** to the ledger. May live in `apps/web` API routes or a small `apps/payments-intake` service; implementation detail TBD.
+- `apps/chain-intake` (optional / secondary): retain only if still needed for **reconciliation**, legacy treasury flows, or redundancy—not as the primary user top-up path once PayAI is live.
 - Optional `apps/mcp-server` for operator-facing integrations.
 - Shared engine/runtime packages for orchestration logic.
 
@@ -168,14 +171,24 @@ This should be codified in `pricing.ts` and persisted via versioned pricing cata
 
 ## 9) Billing and Credit Lifecycle
 
-### Top-up flow
-1. User selects bundle.
-2. API returns treasury + memo payload.
-3. Wallet sends USDC.
-4. Helius webhook received by chain-intake.
-5. Deposit verified + attributed.
-6. `credits_ledger` credited (SETTLED).
-7. UI balance updates and usage continues.
+### Separation of concerns (PayAI vs ARES pricing)
+
+| Layer | Responsibility |
+| ----- | -------------- |
+| **PayAI / x402** | User-facing **payment**: accept funds for a **defined purchase** (bundle, tier, or top-up SKU). Settlement to merchant. See [PayAI](https://payai.network/) and [Introduction](https://docs.payai.network/introduction). |
+| **ARES (unchanged)** | **Credit balance**, **quota**, and **all usage pricing**: Sections 7–8 formulas, `pricing_catalog`, per-tool classes, provisional debits, refunds on failure. PayAI is **not** consulted per token or per tool call. |
+
+**Credit conversion rule:** On each successful PayAI settlement, ARES applies a **deterministic mapping** (e.g. `bundle_id` → `credit_amount` and optional `tier_effective_until`) configured in Postgres. That mapping is **product policy**, not part of the metering math.
+
+### Top-up flow (PayAI primary)
+1. User selects bundle or paid tier SKU in UI.
+2. Backend creates a **pending purchase** row (`purchase_id`, `wallet_id`, SKU, expected amount, expiry) and returns **PayAI / x402 checkout parameters** (or redirect/instructions per official integration).
+3. User pays through PayAI; payment settles to ARES merchant account per facilitator.
+4. PayAI calls ARES **settlement webhook** (or ARES polls/confirms per spec); handler verifies signature, idempotency key, amount, and `purchase_id` / correlation metadata.
+5. On success: append `credits_ledger` **CREDIT** entry (SETTLED) with reference `payai_payment_id` (or equivalent); update `purchase` state; optional tier flags on `wallets`.
+6. UI balance updates; user may run operations; debits still use **Section 7–8** only.
+
+**Legacy / optional:** Direct treasury + memo + Helius (or similar) may remain as **fallback or ops-only** reconciliation; it is **not** the primary user path once PayAI is production.
 
 ### Consumption flow
 1. pre-check session/rate/quota
@@ -198,6 +211,8 @@ Minimum required tables/views:
 - `findings`
 - `reports`
 - `webhook_events` / `unallocated_deposits` (for replay/manual ops)
+- `purchases` (or `pay_intents`): pending/completed top-ups; correlates UI session → PayAI request → ledger credit
+- `payment_provider_events` (append-only): raw PayAI webhook payloads + verification outcome for audit/replay
 
 ## 11) API Surface to Build
 
@@ -209,9 +224,10 @@ Minimum required tables/views:
 
 ### Billing
 - `/api/billing/bundles`
-- `/api/billing/prepare`
+- `/api/billing/prepare` (returns SKU + **PayAI/x402** client parameters; creates `purchase` pending row)
 - `/api/billing/balance`
 - `/api/billing/history`
+- `POST /api/billing/webhooks/payai` (or dedicated intake service URL): verified settlement → credit grant (internal-only, authenticated via PayAI signing secret)
 
 ### Runtime
 - `/api/chat`
@@ -293,7 +309,8 @@ Need:
 - No unbounded user-controlled execution contexts
 - Strict tool permissions by class and tier
 - Admin actions require elevated verification
-- On-chain deposit attribution checks and replay protection
+- On-chain deposit attribution checks and replay protection (if legacy rail retained)
+- **PayAI webhook**: signature verification, idempotency (duplicate events must not double-credit), strict mapping from settlement → `purchase_id` → single ledger credit
 
 ## 18) Observability Requirements
 
@@ -309,7 +326,7 @@ Need:
 - alerting:
   - queue backlog
   - failure spikes
-  - webhook failures
+  - webhook failures (including PayAI settlement intake)
   - abnormal spend
 
 ## 19) Development Program (Execution Plan)
@@ -323,6 +340,7 @@ Need:
 - P2: Quota + billing core
   - credits ledger + balance + bundles + prepare
   - metered debit/refund path
+  - **PayAI integration (cash-in only)**: SDK or HTTP flow per [docs index](https://docs.payai.network/llms.txt); sandbox/Echo merchant testing; production webhook; `purchases` + `payment_provider_events`; bundle → credit mapping in DB; no changes to Section 7–8 formulas
 - P3: Queue + worker runtime on K8s
   - async scans and worker orchestration
 - P4: Hierarchical orchestrator runtime
@@ -338,7 +356,7 @@ Need:
 
 - Web app is primary and complete for user workflows.
 - Wallet-first login works reliably (SIWS).
-- Pricing/quotas are enforced and auditable.
+- **PayAI top-up** credits wallets reliably with no double-spend on webhook retry; pricing/quotas/metering remain enforced and auditable per Sections 7–8.
 - Metering reflects real usage and prevents abuse.
 - Async scans execute on K8s workers with traceability.
 - Hierarchical orchestrator runtime is operational.
@@ -350,7 +368,7 @@ Need:
 
 - Multi-chain wallet login (EVM) in v1
 - One-shot 80+ skill rollout
-- Card-first billing as primary rail
+- Card-first billing as primary rail (PayAI/x402 is primary cash-in; card, if ever added, is secondary)
 - Legacy CLI-first user journey
 - Keeping flat orchestration as end-state
 
@@ -362,6 +380,7 @@ To start implementation safely, the next artifacts should be:
    - interfaces for orchestrator/supervisor/coordinator/sub-agent/worker
 2. Billing & Metering Spec v1
    - pricing catalog schema + debit/refund lifecycle + per-tool class mapping
+   - PayAI: purchase SKUs, bundle→credit table, webhook contract, idempotency keys (still **no** change to usage unit formulas)
 3. Wave A Skill Manifest
    - selected 12-15 skills with adapters, tool needs, cost class, policy class
 
