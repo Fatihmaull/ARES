@@ -2,6 +2,7 @@
 # image lets us run the same code on Fly/Render/etc when needed.
 FROM node:22-bookworm-slim AS deps
 WORKDIR /repo
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/engine/package.json packages/engine/
