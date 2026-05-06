@@ -5,15 +5,17 @@ WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/engine/package.json packages/engine/
+COPY packages/observability/package.json packages/observability/
 COPY packages/queue/package.json packages/queue/
 COPY apps/web/package.json apps/web/
-RUN pnpm install --frozen-lockfile --filter=@asst/web... --filter=@ares/engine... --filter=@ares/queue...
+RUN pnpm install --frozen-lockfile --filter=@asst/web...
 
 FROM node:22-bookworm-slim AS build
 WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 COPY --from=deps /repo /repo
 COPY packages/engine packages/engine
+COPY packages/observability packages/observability
 COPY packages/queue packages/queue
 COPY apps/web apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
