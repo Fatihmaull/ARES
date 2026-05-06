@@ -1,0 +1,49 @@
+name: Database Migrations
+
+on:
+  push:
+    branches:
+      - improved-ares
+      - main
+    paths:
+      - "apps/chain-intake/sql/**"
+      - "apps/chain-intake/scripts/migrate.ts"
+      - ".github/workflows/db-migrate.yml"
+  workflow_dispatch:
+    inputs:
+      database_url_secret:
+        description: "Which DB secret to use (DATABASE_URL or DATABASE_URL_STAGING)."
+        required: true
+        default: "DATABASE_URL"
+
+concurrency:
+  group: db-migrate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter @asst/chain-intake...
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: ${{ secrets[inputs.database_url_secret || 'DATABASE_URL'] }}
+        run: pnpm --filter @asst/chain-intake migrate

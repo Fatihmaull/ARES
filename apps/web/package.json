@@ -14,6 +14,10 @@
   },
   "dependencies": {
     "@ares/engine": "workspace:*",
+    "@ares/observability": "workspace:*",
+    "@ares/queue": "workspace:*",
+    "@aws-sdk/client-s3": "^3.658.0",
+    "@aws-sdk/s3-request-presigner": "^3.658.0",
     "@solana/spl-memo": "^0.2.5",
     "@solana/spl-token": "^0.4.14",
     "@solana/wallet-adapter-base": "^0.9.27",

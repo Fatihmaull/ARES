@@ -1,0 +1,27 @@
+{
+  "name": "@asst/worker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ARES async worker — consumes scan/chat/tool jobs from the queue, runs the engine, persists results.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "node --import tsx src/server.ts",
+    "start": "node --import tsx src/server.ts",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/__tests__/*.test.ts\""
+  },
+  "dependencies": {
+    "@ares/engine": "workspace:*",
+    "@ares/observability": "workspace:*",
+    "@ares/queue": "workspace:*",
+    "pg": "^8.16.3",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.15.5",
+    "typescript": "^5.7.0"
+  }
+}

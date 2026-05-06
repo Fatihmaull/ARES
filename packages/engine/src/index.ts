@@ -52,3 +52,6 @@ export * from "./findings/index.js";
 
 // Sandbox execution surface (host / docker / deepagents-adapter)
 export * from "./sandbox/index.js";
+
+// 5-tier hierarchy (Orchestrator / Supervisor / Coordinator / SubAgent / Worker)
+export * from "./hierarchy/index.js";

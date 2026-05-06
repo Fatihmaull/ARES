@@ -73,10 +73,8 @@ const TIERS = [
 ] as const;
 
 const RAILS = [
-  { label: "Solana Pay", href: "https://solanapay.com", tag: "SPL-USDC" },
-  { label: "Marquee", href: "https://mpp.dev", tag: "x402" },
-  { label: "PayAI", href: "https://payai.network", tag: "Agent-Routed" },
-  { label: "Stripe", href: "https://stripe.com", tag: "Fiat Bridge" },
+  { label: "PayAI", href: "https://payai.network", tag: "x402 · Primary" },
+  { label: "Solana Pay", href: "https://solanapay.com", tag: "SPL-USDC · Fallback" },
 ];
 
 export default function PricingPage() {
@@ -262,7 +260,7 @@ const FAQS = [
   },
   {
     q: "Do you offer on-chain settlement?",
-    a: "Yes — wallet holders can buy ASST unit bundles with USDC via memo-attributed transfers (treasury address shown on Dashboard → Billing). Solana Pay / x402 integrations remain on the roadmap; Stripe can bridge fiat for enterprise.",
+    a: "Yes — top-ups go through PayAI (x402) by default and credits land in your wallet's ledger after settlement. The legacy memo-attributed USDC transfer rail remains as a fallback.",
   },
 ];
 

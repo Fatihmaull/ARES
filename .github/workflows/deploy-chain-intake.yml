@@ -1,0 +1,40 @@
+name: Deploy Chain Intake
+
+on:
+  push:
+    branches:
+      - improved-ares
+      - main
+    paths:
+      - "apps/chain-intake/**"
+      - ".github/workflows/deploy-chain-intake.yml"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-chain-intake-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Fly deploy ares-chain-intake
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy chain-intake
+        working-directory: apps/chain-intake
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl deploy \
+            --config fly.toml \
+            --dockerfile Dockerfile \
+            --remote-only \
+            --strategy rolling

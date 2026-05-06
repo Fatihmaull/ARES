@@ -1,0 +1,44 @@
+app = "ares-chain-intake"
+primary_region = "iad"
+kill_signal = "SIGTERM"
+kill_timeout = "20s"
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8787"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8787
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+    force_https = true
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [services.concurrency]
+    type = "requests"
+    soft_limit = 100
+    hard_limit = 200
+
+  [[services.http_checks]]
+    interval = "30s"
+    grace_period = "30s"
+    method = "get"
+    path = "/health"
+    protocol = "http"
+    timeout = "5s"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+
+[deploy]
+  strategy = "rolling"

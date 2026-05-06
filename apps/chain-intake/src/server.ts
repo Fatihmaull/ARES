@@ -1,6 +1,8 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 
+import { captureException, initSentry } from "@ares/observability";
+
 import { getPool } from "./db.js";
 import { applyBillingDeposits } from "./credits-on-deposit.js";
 import { parseWebhookBody, upsertParsedTransactions } from "./ingest.js";
@@ -9,6 +11,8 @@ const webhookSecret = process.env.WEBHOOK_SHARED_SECRET?.trim();
 if (process.env.NODE_ENV === "production" && !webhookSecret) {
   throw new Error("WEBHOOK_SHARED_SECRET is required in production");
 }
+
+void initSentry({ serviceName: "ares-chain-intake" });
 
 const app = new Hono();
 
@@ -68,6 +72,7 @@ app.post("/webhooks/helius", async (c) => {
     } catch (billingErr) {
       const msg = billingErr instanceof Error ? billingErr.message : String(billingErr);
       logError("billing_deposit_failed", { requestId, message: msg });
+      void captureException(billingErr, { requestId, kind: "billing_deposit" });
     }
 
     logInfo("webhook_ingested", {
@@ -95,6 +100,7 @@ app.post("/webhooks/helius", async (c) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logError("webhook_ingest_failed", { requestId, message });
+    void captureException(error, { requestId });
     return c.json({ error: "internal error", requestId }, 500);
   } finally {
     client.release();

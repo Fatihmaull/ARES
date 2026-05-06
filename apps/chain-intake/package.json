@@ -16,6 +16,7 @@
     "migrate": "node --import tsx scripts/migrate.ts"
   },
   "dependencies": {
+    "@ares/observability": "workspace:*",
     "@hono/node-server": "^1.19.7",
     "hono": "^4.11.3",
     "pg": "^8.16.3",
