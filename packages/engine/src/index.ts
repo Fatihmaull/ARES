@@ -10,6 +10,11 @@ export {
   type SubAgentConfig,
 } from "./sub-agents.js";
 
+export {
+  SUB_AGENT_PUBLIC_LIST,
+  type SubAgentPublicEntry,
+} from "./sub-agent-public-manifest.js";
+
 // Persistence (SQLite-backed; migrates legacy lowdb JSON on first run)
 export { ASSTPersistenceSQLite } from "./persistence/sqlite.js";
 
@@ -47,3 +52,6 @@ export * from "./findings/index.js";
 
 // Sandbox execution surface (host / docker / deepagents-adapter)
 export * from "./sandbox/index.js";
+
+// 5-tier hierarchy (Orchestrator / Supervisor / Coordinator / SubAgent / Worker)
+export * from "./hierarchy/index.js";

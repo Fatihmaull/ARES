@@ -5,13 +5,18 @@
   "type": "module",
   "description": "Helius webhook receiver + PostgreSQL + backfill + evidence export for Assurance Run",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "node --import tsx src/server.ts",
+    "lint": "tsc --noEmit",
     "start": "node --import tsx src/server.ts",
     "backfill": "node --import tsx scripts/backfill.ts",
     "export-evidence": "node --import tsx scripts/export-evidence.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test \"src/__tests__/*.test.ts\""
+    "test": "node --import tsx --test \"src/__tests__/*.test.ts\"",
+    "migrate": "node --import tsx scripts/migrate.ts"
   },
   "dependencies": {
+    "@ares/observability": "workspace:*",
     "@hono/node-server": "^1.19.7",
     "hono": "^4.11.3",
     "pg": "^8.16.3",

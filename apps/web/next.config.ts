@@ -23,6 +23,12 @@ loadDotenv({ path: rootEnv, override: false });
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  transpilePackages: [
+    "@solana/wallet-adapter-react",
+    "@solana/wallet-adapter-react-ui",
+    "@solana/wallet-adapter-base",
+    "@solana/wallet-adapter-phantom",
+  ],
   /**
    * Silences the "multiple lockfiles" warning we saw during smoke tests:
    * force Next to treat the monorepo root as the trace root rather than

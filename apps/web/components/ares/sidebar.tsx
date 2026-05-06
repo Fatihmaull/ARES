@@ -2,21 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  ShieldAlert, 
-  Target, 
-  Search, 
-  Activity, 
-  FileText, 
-  Settings, 
+import {
+  LayoutDashboard,
+  ShieldAlert,
+  Target,
+  Search,
+  Activity,
+  FileText,
+  CreditCard,
+  Settings,
   Terminal,
   ChevronLeft,
   ChevronRight,
-  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/lib/ares/store";
+import { AdminSidebarLink } from "./admin-sidebar-link";
+import { Logo, LogoMark } from "./logo";
+import { StatusBadge } from "./status-badge";
 
 const navItems = [
   { name: "Overview", href: "/dashboard/overview", icon: LayoutDashboard },
@@ -25,6 +28,7 @@ const navItems = [
   { name: "Investigations", href: "/dashboard/investigations", icon: Search },
   { name: "Agents", href: "/dashboard/agents", icon: Activity },
   { name: "Reports", href: "/dashboard/reports", icon: FileText },
+  { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
   { name: "Console", href: "/dashboard/console", icon: Terminal },
 ];
 
@@ -37,19 +41,22 @@ export function Sidebar() {
       "h-screen sticky top-0 border-r border-border bg-card transition-all duration-300 flex flex-col z-50",
       sidebarCollapsed ? "w-16" : "w-64"
     )}>
-      {/* Brand */}
-      <div className="p-6 h-16 flex items-center justify-between overflow-hidden whitespace-nowrap border-b border-border">
-        {!sidebarCollapsed && (
-          <Link href="/dashboard" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded bg-primary flex items-center justify-center transition-transform group-hover:scale-105">
-              <Shield className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-serif font-medium text-xl tracking-tight text-foreground transition-colors group-hover:text-primary">ARES</span>
+      <div className="px-5 h-16 flex items-center overflow-hidden whitespace-nowrap border-b border-border">
+        {!sidebarCollapsed ? (
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 group text-foreground hover:text-primary transition-colors"
+          >
+            <Logo size={22} />
+            <StatusBadge compact />
           </Link>
-        )}
-        {sidebarCollapsed && (
-          <Link href="/dashboard" className="w-8 h-8 rounded bg-primary flex items-center justify-center mx-auto transition-transform hover:scale-105">
-            <Shield className="w-4 h-4 text-primary-foreground" />
+        ) : (
+          <Link
+            href="/dashboard"
+            className="mx-auto text-foreground hover:text-primary transition-colors"
+            aria-label="ARES home"
+          >
+            <LogoMark size={22} />
           </Link>
         )}
       </div>
@@ -79,6 +86,7 @@ export function Sidebar() {
             </Link>
           );
         })}
+        <AdminSidebarLink collapsed={sidebarCollapsed} pathname={pathname} />
       </nav>
 
       <div className="p-4 border-t border-border mt-auto">

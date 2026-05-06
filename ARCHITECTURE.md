@@ -4,7 +4,8 @@
 
 > Short version: one engine, many surfaces. Read
 > [`packages/engine/README.md`](./packages/engine/README.md) for the public
-> API and [`REPO_MAP.md`](./REPO_MAP.md) for file navigation.
+> API and [`docs/REPO_MAP.md`](./docs/REPO_MAP.md) for full directory
+> navigation.
 
 ## 1. System diagram
 
@@ -148,16 +149,19 @@ Legacy lowdb JSON is migrated on first run by `ASSTPersistenceSQLite`.
 
 ## 9. Related documents
 
-- **Product narrative:** [`WHITEPAPER.en.md`](./WHITEPAPER.en.md) §9–§11 /
-  [`WHITEPAPER.id.md`](./WHITEPAPER.id.md)
+- **Repository map (every top-level dir):** [`docs/REPO_MAP.md`](./docs/REPO_MAP.md)
+- **Product narrative (canonical EN + ID):** [`docs/WHITEPAPER.en.md`](./docs/WHITEPAPER.en.md) ·
+  [`docs/WHITEPAPER.id.md`](./docs/WHITEPAPER.id.md) · hub
+  [`docs/WHITEPAPER.md`](./docs/WHITEPAPER.md)
+- **Product + quick links:** [`README.md`](./README.md)
+- **Requirements:** [`docs/PRD.md`](./docs/PRD.md)
+- **Walkthrough / demo script:** [`docs/walkthrough.md`](./docs/walkthrough.md)
+- **Tool catalog (hub + EN/ID stubs):** [`docs/TOOLS.md`](./docs/TOOLS.md)
+- **References (hub + citations):** [`docs/REFERENCES.md`](./docs/REFERENCES.md)
 - **Dashboard UX + digest payload:** [`docs/DASHBOARD-UX.en.md`](./docs/DASHBOARD-UX.en.md) ·
   [`docs/DASHBOARD-UX.id.md`](./docs/DASHBOARD-UX.id.md)
-- **SDLC / Lean Six Sigma (DMAIC):** [`WHITEPAPER.en.md` § 9.3](./WHITEPAPER.en.md#93-sdlc-and-lean-six-sigma-alignment)
-- **Tools catalog:** [`TOOLS.md`](./TOOLS.md)
-- **References:** [`REFERENCES.md`](./REFERENCES.md)
-
-Legacy language-scoped files: [`ARCHITECTURE.en.md`](./ARCHITECTURE.en.md),
-[`ARCHITECTURE.id.md`](./ARCHITECTURE.id.md).
+- **Public web (auth / billing design):** [`docs/design/public-web-auth-billing.md`](./docs/design/public-web-auth-billing.md)
+- **Tools / code map (Deep Agents ↔ WHITEPAPER §10):** [`deepagentsjs/docs/TOOLS-MAP.md`](./deepagentsjs/docs/TOOLS-MAP.md)
 
 ---
 

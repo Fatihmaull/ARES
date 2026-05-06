@@ -1,65 +1,88 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPublicOrchestrator } from "@/lib/engine-factory";
-import { join } from "node:path";
+import { enforceRateLimit, requireApiKey } from "@/lib/api";
 
 export async function GET(req: NextRequest) {
+  const auth = requireApiKey(req);
+  if (!auth.ok) return auth.response;
+  const { requestId } = auth;
+  const rate = enforceRateLimit(req, requestId, "console-stream", 30);
+  if (!rate.ok) return rate.response;
+
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
 
-  const send = async (data: any) => {
+  const send = async (data: unknown) => {
     await writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
   };
 
-  // Start the background process
-  (async () => {
-    try {
-      const repoRoot = join(process.cwd(), "../..");
-      const orchestrator = createPublicOrchestrator({ repoRoot });
-      await orchestrator.init();
+  const writeRaw = async (chunk: string) => {
+    await writer.write(encoder.encode(chunk));
+  };
 
-      // For this production demo, we simulate a stream of current system activity
-      // coupled with real chat history.
-      const history = await (orchestrator as any).persistence.getHistory(20);
-      for (const msg of history.reverse()) {
+  (async () => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+
+    const cleanup = () => {
+      if (interval) clearInterval(interval);
+      interval = undefined;
+      writer.close().catch(() => {});
+    };
+
+    req.signal.addEventListener("abort", cleanup);
+
+    try {
+      await writeRaw(": sse-open\n\n");
+
+      const orchestrator = createPublicOrchestrator();
+      await orchestrator.init();
+      const history = await orchestrator.getRecentHistory(20);
+      const chronological = [...history].reverse();
+
+      for (const msg of chronological) {
         await send({
-          type: 'log',
-          source: msg.role === 'user' ? 'Operator' : 'ARES',
-          level: msg.role === 'user' ? 'info' : 'security',
+          type: "log",
+          source: msg.role === "user" ? "Operator" : "ARES",
+          level: msg.role === "user" ? "info" : "security",
           message: msg.content,
-          timestamp: msg.timestamp
+          timestamp: msg.timestamp,
         });
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 100));
       }
 
-      // Keep connection open with heartbeats
-      const interval = setInterval(async () => {
+      interval = setInterval(async () => {
         try {
-          await send({ type: 'heartbeat', timestamp: new Date().toISOString() });
+          await send({
+            type: "heartbeat",
+            requestId,
+            timestamp: new Date().toISOString(),
+          });
         } catch {
-          clearInterval(interval);
+          if (interval) clearInterval(interval);
         }
       }, 30000);
-
-      req.signal.addEventListener('abort', () => {
-        clearInterval(interval);
-        writer.close();
-      });
-
     } catch (err) {
       console.error("SSE Error:", err);
       try {
-        await send({ type: 'error', message: 'Failed to initialize engine stream.' });
-      } catch {}
-      writer.close();
+        await send({
+          type: "error",
+          requestId,
+          message: "Failed to open persistence stream.",
+        });
+      } catch {
+        /* stream already closed */
+      }
+      cleanup();
     }
   })();
 
   return new NextResponse(readable, {
     headers: {
-      "Content-Type": "text/event-stream",
+      "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
-      "Connection": "keep-alive",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
     },
   });
 }

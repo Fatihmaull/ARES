@@ -1,56 +1,34 @@
-# ASST CLI Transformation Walkthrough
+# ASST Web-First Walkthrough
 
-## 1. Overview
-The ASST Solana Security Tool has been modernized from a Next.js web application into a CLI-native Agentic Tool. This change enables developers to perform high-speed security audits directly from their local workspace without requiring a browser.
+This walkthrough describes the web-first flow for ASST after CLI removal.
 
-## 2. Key Components Created
+## 1. Start services
 
-### 2.1 CLI Entry Point (`apps/asst-cli/src/asst.ts`)
-- Implemented using **Commander.js**.
-- Commands:
-  - `asst init`: Environment configuration.
-  - `asst scan`: Sequential L1-L6 security assurance.
-  - `asst chat`: Persistent REPL for codebase interaction.
-  - `asst index`: Search indexing for the repository.
+1. Install dependencies: `pnpm install`
+2. Start web app: `pnpm --filter @asst/web dev`
+3. Optional companion services:
+   - MCP server: `pnpm --filter @asst/mcp-server dev`
+   - Chain intake: `pnpm --filter @asst/chain-intake dev`
 
-### 2.2 Agentic Engine (`apps/asst-cli/src/engine/agent.ts`)
-- Orchestrates LangGraph logic for the terminal.
-- Integrates 11+ security tools from `deepagentsjs`.
-- Provides stateful chat sessions with SQLite persistence.
+## 2. Exercise the dashboard
 
-### 2.3 Integrated Security Tools
-- **Filesystem Tools:** `read_file`, `write_file`, and `run_terminal_cmd`.
-- **Solana Tools:** RPC analysis, Git Diff, Account Snapshot, etc.
+1. Open `http://localhost:3000`
+2. Navigate to `/dashboard/overview`
+3. Verify API-backed panels load:
+   - posture
+   - findings
+   - reports
+   - agent metadata
 
-## 3. How to Use
+## 3. Exercise console + APIs
 
-### Installation
-```bash
-# From the monorepo root
-pnpm install
-cd apps/asst-cli
-pnpm build
-npm link # To use 'asst' command globally
-```
+1. Open `/dashboard/console`
+2. Send a command and verify `/api/chat` response appears in stream
+3. Trigger scan and verify `/api/scan` returns queued status
+4. Confirm deterministic response envelopes (`ok`, `requestId`, `data`)
 
-### Running a Scan
-Navigate to your Solana/Anchor project and run:
-```bash
-asst scan .
-```
-1. ASST will perform sequential checks (L1-L6).
-2. A summary report of vulnerabilities will be printed.
-3. You will be asked if you want the agent to propose and apply fixes.
+## 4. Production hardening checks
 
-### Interactive Chat
-Start a persistent session to ask specific questions about your code:
-```bash
-asst chat
-```
-The agent maintains history in `.asst/asst.db`, allowing for complex, multi-turn debugging.
-
-## 4. Safety First
-All destructive actions (`write_file`, `run_terminal_cmd`) are gated by a **Safe Mode** confirmation. The agent will describe exactly what it want to do and ask for your approval before proceeding.
-
----
-*Created by ASST Agent on 2026-04-15*
+1. Set `ASST_WEB_API_KEY` and confirm protected routes require the key
+2. Validate report download path controls (`/api/reports/download?file=...`)
+3. Confirm route-level rate limiting behavior on hot endpoints

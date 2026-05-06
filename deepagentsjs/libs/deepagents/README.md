@@ -42,6 +42,7 @@ a **planning tool**, **sub agents**, access to a **file system**, and a **detail
 |----------------------------|---------|
 | [`evals/README.md`](./evals/README.md) | Behavioural evals (Vitest + LangSmith); OpenRouter runner; HF `solana-vuln-rust` benchmark — **costs API credits** when running `test:eval` |
 | [`examples/assurance-run/`](./examples/assurance-run/) | Assurance Run presets, manifest schema, SARIF merge lane |
+| [`examples/solana-elite-auditor/`](./examples/solana-elite-auditor/) | **Elite Solana Auditor** — orchestrator + optional Deep Agents harness, PDF/posture tools, SFC mapping, competitor/research links |
 | [`../apps/asst-cli/`](../apps/asst-cli/) | `asst-manifest` CLI to read assurance manifests |
 | [`../apps/web/`](../apps/web/) | Next.js SEO shell (metadata, sitemap, robots, JSON-LD) |
 | [`../COMPETITORS.md`](../COMPETITORS.md) | Internal competitive landscape (Colosseum Copilot scan runbook) |

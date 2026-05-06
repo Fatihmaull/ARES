@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
 import { getAssuranceData } from "@/lib/data";
+import { apiError, apiSuccess, requireApiKeyOrPublic } from "@/lib/api";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = requireApiKeyOrPublic(req);
+  if (!auth.ok) return auth.response;
+  const { requestId } = auth;
+
   try {
     const { posture, latest, manifests } = getAssuranceData();
 
-    return NextResponse.json({
+    return apiSuccess(requestId, {
       overall: posture.overall,
       grade: posture.grade,
       layers: posture.layers,
@@ -20,9 +24,6 @@ export async function GET() {
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: "Failed to compute posture", message: error.message },
-      { status: 500 }
-    );
+    return apiError(requestId, "INTERNAL_ERROR", "Failed to compute posture.", 500, error.message);
   }
 }

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ares.local/schemas/benchmark-entry.json",
+  "title": "ARES Tier A/B benchmark entry",
+  "type": "object",
+  "required": [
+    "id",
+    "ecosystem",
+    "benchmark_tier",
+    "primary_evidence_urls",
+    "evidence_types",
+    "ground_truth_findings",
+    "artifact",
+    "negative_controls"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[A-Z0-9._-]+$" },
+    "ecosystem": { "type": "string", "enum": ["solana-anchor", "solana-native", "other"] },
+    "benchmark_tier": { "type": "string", "enum": ["A", "B"] },
+    "negative_controls": { "type": "boolean" },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", "informational", "none"]
+    },
+    "category": { "type": "string" },
+    "primary_evidence_urls": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "format": "uri" }
+    },
+    "evidence_types": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "post_mortem",
+          "audit_report",
+          "cve_advisory",
+          "official_incident",
+          "documented_security_fix",
+          "pedagogic_poc"
+        ]
+      }
+    },
+    "secondary_evidence_urls": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri" }
+    },
+    "program_id_or_scope": { "type": "string" },
+    "ground_truth_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cwe_like", "description"],
+        "properties": {
+          "cwe_like": { "type": "string" },
+          "location_hint": { "type": "string" },
+          "description": { "type": "string" },
+          "maps_to_evidence": { "type": "string" }
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["type", "ref"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["source_tree", "git_ref", "url", "none"]
+        },
+        "ref": { "type": "string" },
+        "path": { "type": "string" }
+      }
+    },
+    "local_project_path": {
+      "type": ["string", "null"],
+      "description": "Optional path relative to deepagentsjs repo root for batch runs; null if not vendored in monorepo"
+    },
+    "notes": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "negative_controls": { "const": true } } },
+      "then": { "properties": { "ground_truth_findings": { "maxItems": 0 } } }
+    }
+  ]
+}

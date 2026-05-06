@@ -26,7 +26,7 @@ export default function AgentsPage() {
       try {
         const res = await fetch("/api/agents");
         const data = await res.json();
-        setAgents(data);
+        setAgents(data?.data?.agents ?? data ?? []);
       } catch (err) {
         console.error("Failed to load agents:", err);
       } finally {
@@ -82,7 +82,11 @@ export default function AgentsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Stability</p>
-                  <p className="text-xl font-serif font-medium">{agent.successRate.toFixed(1)}%</p>
+                  <p className="text-xl font-serif font-medium">
+                    {typeof agent.successRate === "number"
+                      ? `${agent.successRate.toFixed(1)}%`
+                      : "—"}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Engine</p>

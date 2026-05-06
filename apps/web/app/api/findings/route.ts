@@ -1,19 +1,80 @@
-import { NextResponse } from "next/server";
+import { apiError, apiSuccess, requireApiKeyOrPublic } from "@/lib/api";
+import { readWalletSession } from "@/lib/auth/read-session";
+import { listFindings } from "@/lib/billing/reports";
 import { getAssuranceData } from "@/lib/data";
+import { getPool } from "@/lib/db/pool";
+import { resolveRepoRoot } from "@/lib/paths";
 
-export async function GET() {
+export const runtime = "nodejs";
+
+const SEVERITY_ORDER: Record<string, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  informational: 4,
+};
+
+export async function GET(req: Request) {
+  const auth = requireApiKeyOrPublic(req);
+  if (!auth.ok) return auth.response;
+  const { requestId } = auth;
+
+  const url = new URL(req.url);
+  const limitRaw = url.searchParams.get("limit");
+  const limit = Math.min(200, Math.max(1, Number.parseInt(limitRaw || "100", 10) || 100));
+
+  const pool = getPool();
+  if (pool) {
+    try {
+      const session = await readWalletSession(req);
+      const rows = await listFindings({
+        pool,
+        wallet: session?.sub ?? null,
+        limit,
+      });
+      const findings = rows.map((r) => ({
+        source: r.agent,
+        severity: capitalize(r.severity),
+        rule: typeof r.detail?.rule === "string" ? r.detail.rule : `${r.agent}-finding`,
+        message: r.title,
+        location:
+          typeof r.detail?.location === "string" ? (r.detail.location as string) : null,
+        line: typeof r.detail?.line === "number" ? r.detail.line : 0,
+        runId: r.run_id,
+        createdAt: r.created_at.toISOString(),
+      }));
+      findings.sort(
+        (a, b) =>
+          (SEVERITY_ORDER[a.severity.toLowerCase()] ?? 4) -
+          (SEVERITY_ORDER[b.severity.toLowerCase()] ?? 4),
+      );
+      const bySeverity = {
+        critical: findings.filter((f) => f.severity === "Critical").length,
+        high: findings.filter((f) => f.severity === "High").length,
+        medium: findings.filter((f) => f.severity === "Medium").length,
+        low: findings.filter((f) => f.severity === "Low").length,
+      };
+      return apiSuccess(requestId, {
+        source: "db",
+        total: findings.length,
+        bySeverity,
+        findings,
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      return apiError(requestId, "INTERNAL_ERROR", "Failed to load findings.", 500, error.message);
+    }
+  }
+
+  // Filesystem fallback (dev only).
   try {
-    const { manifests, supplyChain, latest } = getAssuranceData();
-
-    // Extract findings from all sources
+    const { supplyChain } = getAssuranceData();
     const findings: any[] = [];
-
-    // From SARIF
     const fs = await import("node:fs");
     const path = await import("node:path");
-    const assuranceDir = path.join(process.cwd(), "../../assurance");
+    const assuranceDir = path.join(resolveRepoRoot(), "assurance");
     const sarifPath = path.join(assuranceDir, "merged.sarif.json");
-
     if (fs.existsSync(sarifPath)) {
       try {
         const sarif = JSON.parse(fs.readFileSync(sarifPath, "utf8"));
@@ -28,10 +89,10 @@ export async function GET() {
             line: r.locations?.[0]?.physicalLocation?.region?.startLine || 0,
           });
         }
-      } catch { /* non-critical */ }
+      } catch (error) {
+        console.warn("Failed to parse merged.sarif.json:", error);
+      }
     }
-
-    // From supply chain
     if (supplyChain?.npm?.vulnerabilities) {
       const vuln = supplyChain.npm.vulnerabilities;
       if (vuln.total > 0) {
@@ -45,46 +106,28 @@ export async function GET() {
         });
       }
     }
-
-    // From last scan results
-    const scanPath = path.join(assuranceDir, "..", ".asst", "last-scan.json");
-    if (fs.existsSync(scanPath)) {
-      try {
-        const scan = JSON.parse(fs.readFileSync(scanPath, "utf8"));
-        for (const result of scan.results || []) {
-          if (result.output?.includes("EXPOSURE") || result.output?.includes("Critical")) {
-            findings.push({
-              source: result.agent,
-              severity: result.output.includes("Critical") ? "Critical" : "High",
-              rule: `${result.agent}-finding`,
-              message: result.output.substring(0, 200),
-              location: "scan-result",
-              line: 0,
-            });
-          }
-        }
-      } catch { /* non-critical */ }
-    }
-
-    // Sort by severity
-    const severityOrder: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3, Informational: 4 };
-    findings.sort((a, b) => (severityOrder[a.severity] || 4) - (severityOrder[b.severity] || 4));
-
-    return NextResponse.json({
+    findings.sort(
+      (a, b) =>
+        (SEVERITY_ORDER[a.severity.toLowerCase()] ?? 4) -
+        (SEVERITY_ORDER[b.severity.toLowerCase()] ?? 4),
+    );
+    return apiSuccess(requestId, {
+      source: "filesystem",
       total: findings.length,
       bySeverity: {
-        critical: findings.filter(f => f.severity === "Critical").length,
-        high: findings.filter(f => f.severity === "High").length,
-        medium: findings.filter(f => f.severity === "Medium").length,
-        low: findings.filter(f => f.severity === "Low").length,
+        critical: findings.filter((f) => f.severity === "Critical").length,
+        high: findings.filter((f) => f.severity === "High").length,
+        medium: findings.filter((f) => f.severity === "Medium").length,
+        low: findings.filter((f) => f.severity === "Low").length,
       },
       findings: findings.slice(0, 100),
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: "Failed to load findings", message: error.message },
-      { status: 500 }
-    );
+    return apiError(requestId, "INTERNAL_ERROR", "Failed to load findings.", 500, error.message);
   }
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

@@ -221,4 +221,13 @@ export class Orchestrator {
     async close() {
         await this.persistence.close();
     }
+    async getRecentHistory(limit = 20) {
+        await this.init();
+        const rows = await this.persistence.getHistory(limit);
+        return rows.map((row) => ({
+            role: row.role,
+            content: row.content,
+            timestamp: row.timestamp,
+        }));
+    }
 }

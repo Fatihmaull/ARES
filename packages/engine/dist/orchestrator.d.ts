@@ -38,4 +38,9 @@ export declare class Orchestrator {
     }[]>;
     private formatContent;
     close(): Promise<void>;
+    getRecentHistory(limit?: number): Promise<{
+        role: string;
+        content: string;
+        timestamp: string;
+    }[]>;
 }

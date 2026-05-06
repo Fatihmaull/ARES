@@ -1,0 +1,8 @@
+=== stdout ===
+## Findings
+
+### Account data matching
+The program exhibits **vulnerabilities** around **account data matching** when compared against the associated token account without proper checks. This aligns with the documented **account_data_matching** class in the pedagogic PoC.
+
+=== stderr ===
+(status) done

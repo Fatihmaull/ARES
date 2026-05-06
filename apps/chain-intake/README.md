@@ -73,7 +73,7 @@ Helius may **retry deliveries**; duplicates are dropped with `ON CONFLICT (signa
 | `HELIUS_API_KEY` | Backfill API calls |
 | `WATCH_ADDRESS` | Same base address as in the Helius webhook (program, wallet, etc.) |
 | `PORT` | HTTP port (default `8787`) |
-| `WEBHOOK_SHARED_SECRET` | Optional; require `Authorization: Bearer …` or `?secret=` |
+| `WEBHOOK_SHARED_SECRET` | Required in production; require `Authorization: Bearer …` or `?secret=` |
 | `BACKFILL_MAX_PAGES` | Optional safety cap on pagination loops |
 | `CHAIN_NETWORK` | Optional string in exported evidence (default `solana-mainnet`) |
 | `CHAIN_LARGE_NATIVE_LAMPORTS` | Threshold for `large_native_transfer` (default `1_000_000_000_000` = 1 000 SOL) |

@@ -52,7 +52,7 @@ export default function NotificationsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-4">
           {notifications.map((n) => (
-            <div key={n.id} className="ares-card p-6 bg-white border border-border group hover:ring-shadow transition-all flex gap-6 items-start">
+            <div key={n.id} className="ares-card p-6 bg-card border border-border group hover:ring-shadow transition-all flex gap-6 items-start">
                <div className={cn(
                  "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border",
                  n.level === 'success' ? "bg-emerald-50 border-emerald-100 text-emerald-600" :

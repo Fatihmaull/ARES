@@ -3,6 +3,7 @@
 // Core orchestrator + sub-agent registry
 export { Orchestrator } from "./orchestrator.js";
 export { createAllSubAgents, SubAgent, SUB_AGENT_CONFIGS, } from "./sub-agents.js";
+export { SUB_AGENT_PUBLIC_LIST, } from "./sub-agent-public-manifest.js";
 // Persistence (SQLite-backed; migrates legacy lowdb JSON on first run)
 export { ASSTPersistenceSQLite } from "./persistence/sqlite.js";
 // Skill discovery + retrieval

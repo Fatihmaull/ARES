@@ -55,7 +55,7 @@ export default function ProfilePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           {/* General Information */}
-          <div className="ares-card p-8 bg-white border border-border whisper-shadow overflow-hidden relative">
+          <div className="ares-card p-8 bg-card border border-border whisper-shadow overflow-hidden relative">
              <div className="absolute top-0 right-0 p-8 opacity-[0.03] scale-150">
                 <User className="w-32 h-32" />
              </div>
@@ -90,7 +90,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Infrastructure Context */}
-          <div className="ares-card p-8 bg-white border border-border whisper-shadow">
+          <div className="ares-card p-8 bg-card border border-border whisper-shadow">
              <h3 className="text-lg font-serif font-bold mb-8 flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-primary" />
                 Infrastructure Context
@@ -164,7 +164,7 @@ export default function ProfilePage() {
               </div>
            </div>
 
-           <div className="ares-card p-8 bg-white border border-border whisper-shadow">
+           <div className="ares-card p-8 bg-card border border-border whisper-shadow">
               <h3 className="text-lg font-serif font-bold mb-6 flex items-center gap-2">
                  <CreditCard className="w-4 h-4 text-primary" />
                  Billing Buffer

@@ -1,5 +1,6 @@
 export { Orchestrator } from "./orchestrator.js";
 export { createAllSubAgents, SubAgent, SUB_AGENT_CONFIGS, type SubAgentConfig, } from "./sub-agents.js";
+export { SUB_AGENT_PUBLIC_LIST, type SubAgentPublicEntry, } from "./sub-agent-public-manifest.js";
 export { ASSTPersistenceSQLite } from "./persistence/sqlite.js";
 export { listInstalledSkills, loadSkills } from "./skills/loader.js";
 export { buildSkillCatalog, rankSkillsForQuery, loadSkillsForTask, renderCatalogSummary, type SkillCatalog, type SkillCatalogEntry, type RankedSkill, type LoadSkillsForTaskOptions, type LoadSkillsForTaskResult, } from "./skills/retrieval.js";

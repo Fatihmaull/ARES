@@ -23,6 +23,7 @@ import {
 } from "recharts";
 import { useState, useEffect } from "react";
 import { Detection, Target, Agent } from "@/lib/ares/mock-data";
+import { safeResponseJson } from "@/lib/safe-response-json";
 import { cn } from "@/lib/utils";
 
 export default function OverviewPage() {
@@ -40,17 +41,20 @@ export default function OverviewPage() {
           fetch("/api/findings"),
           fetch("/api/posture"),
           fetch("/api/agents"),
-          fetch("/api/reports")
+          fetch("/api/reports"),
         ]);
-        const findingsData = await findingsRes.json();
-        const postureData = await postureRes.json();
-        const agentsData = await agentsRes.json();
-        const reportsData = await reportsRes.json();
-        
-        setFindings(findingsData.findings || []);
-        setPosture(postureData);
-        setAgents(agentsData);
-        setReports(reportsData);
+
+        const [findingsData, postureData, agentsData, reportsData] = await Promise.all([
+          safeResponseJson<any>(findingsRes),
+          safeResponseJson<any>(postureRes),
+          safeResponseJson<any>(agentsRes),
+          safeResponseJson<any>(reportsRes),
+        ]);
+
+        setFindings(findingsData?.data?.findings ?? findingsData?.findings ?? []);
+        setPosture(postureData?.data ?? postureData ?? null);
+        setAgents(agentsData?.data?.agents ?? agentsData ?? []);
+        setReports(reportsData?.data?.reports ?? reportsData ?? []);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
       } finally {
@@ -124,7 +128,7 @@ export default function OverviewPage() {
         />
         <StatCard 
           label="Assurance Reports" 
-          value={loading ? "..." : reports.length.toString()} 
+          value={loading ? "..." : (reports?.length ?? 0).toString()} 
           trend="Signed Archives" 
           icon={<TargetIcon className="w-5 h-5" />} 
         />
@@ -161,8 +165,8 @@ export default function OverviewPage() {
               <AreaChart data={posture?.layers || []}>
                 <defs>
                   <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#c96442" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#c96442" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -184,7 +188,7 @@ export default function OverviewPage() {
                     backgroundColor: 'hsl(var(--card))', 
                     border: '1px solid hsl(var(--border))', 
                     borderRadius: '12px',
-                    boxShadow: 'rgba(0, 0, 0, 0.05) 0px 4px 24px'
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
                   }}
                   itemStyle={{ color: 'hsl(var(--primary))', fontFamily: 'var(--font-sans)' }}
                 />
