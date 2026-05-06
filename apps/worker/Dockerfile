@@ -26,8 +26,10 @@ COPY packages/queue packages/queue
 COPY apps/worker apps/worker
 COPY .agents .agents
 
-# Optional build step (skipped — we run via tsx).
-# RUN pnpm --filter @ares/engine build && pnpm --filter @ares/queue build && pnpm --filter @asst/worker build
+# Build workspace packages that export from dist/ (required for runtime imports).
+RUN pnpm --filter @ares/observability build \
+  && pnpm --filter @ares/queue build \
+  && pnpm --filter @ares/engine build
 
 ENV NODE_ENV=production
 ENV ASST_WORKER_HEALTH_PORT=9090
