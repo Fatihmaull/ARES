@@ -1,4 +1,4 @@
-import { pino } from "pino";
+import pino, { type Logger as PinoLogger } from "pino";
 
 export interface Logger {
   info(obj: Record<string, unknown> | string, msg?: string): void;
@@ -40,7 +40,7 @@ export function createLogger(opts: LoggerOptions): Logger {
   return wrap(baseLogger);
 }
 
-function wrap(p: pino.Logger): Logger {
+function wrap(p: PinoLogger): Logger {
   return {
     info: (obj, msg) => callPino(p, "info", obj, msg),
     warn: (obj, msg) => callPino(p, "warn", obj, msg),
@@ -51,7 +51,7 @@ function wrap(p: pino.Logger): Logger {
 }
 
 function callPino(
-  p: pino.Logger,
+  p: PinoLogger,
   fn: "info" | "warn" | "error" | "debug",
   obj: Record<string, unknown> | string,
   msg?: string,
