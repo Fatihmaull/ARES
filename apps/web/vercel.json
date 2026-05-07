@@ -1,4 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": []
+  "crons": [],
+  "installCommand": "corepack enable && corepack prepare pnpm@10.10.0 --activate && pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @asst/web build"
 }
