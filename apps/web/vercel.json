@@ -1,9 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [
-    {
-      "path": "/api/admin/reconcile-payai",
-      "schedule": "0 * * * *"
-    }
-  ]
+  "crons": []
 }

@@ -1,0 +1,43 @@
+name: PayAI Reconcile Cron
+
+on:
+  schedule:
+    # Hourly. If you want every 15 minutes: "*/15 * * * *"
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: payai-reconcile-cron
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call reconcile endpoint
+        env:
+          ARES_WEB_BASE_URL: ${{ secrets.ARES_WEB_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ARES_WEB_BASE_URL}" ]; then
+            echo "Missing secrets.ARES_WEB_BASE_URL (e.g. https://yourapp.vercel.app)"
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "Missing secrets.CRON_SECRET"
+            exit 1
+          fi
+
+          URL="${ARES_WEB_BASE_URL%/}/api/admin/reconcile-payai"
+          echo "Calling ${URL}"
+
+          # Fail non-2xx. Show body for debugging.
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            --data '{}' \
+            --fail \
+            "${URL}"
+
