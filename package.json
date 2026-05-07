@@ -1,6 +1,7 @@
 {
   "name": "ares-workspace",
   "private": true,
+  "packageManager": "pnpm@10.10.0",
   "scripts": {
     "build": "pnpm -r --filter @asst/web --filter @ares/engine --filter @asst/mcp-server --filter @asst/chain-intake run build",
     "dev": "pnpm -r --filter @asst/web --filter @asst/mcp-server --filter @asst/chain-intake run dev",
