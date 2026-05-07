@@ -16,8 +16,8 @@ const FOOTER_COLS = [
     heading: "Operators",
     links: [
       { label: "Targets", href: "/dashboard/targets" },
+      { label: "Runs", href: "/dashboard/runs" },
       { label: "Detections", href: "/dashboard/detections" },
-      { label: "Investigations", href: "/dashboard/investigations" },
       { label: "Reports", href: "/dashboard/reports" },
     ],
   },
@@ -48,7 +48,7 @@ export function SiteFooter() {
           <Logo size={22} />
         </Link>
 
-        <StatusBadge label="All Systems Operational" />
+        <StatusBadge variant="system" />
 
         <p className="type-sm text-muted-foreground max-w-[28ch]">
           Autonomous security for on-chain infrastructure and the agents that

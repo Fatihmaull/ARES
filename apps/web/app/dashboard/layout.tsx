@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { Sidebar } from "@/components/ares/sidebar";
 import { SolanaWalletProviders } from "@/components/wallet/solana-wallet-providers";
 import { WalletSessionControls } from "@/components/wallet/wallet-session-controls";
-import { Bell, Search, X, Moon, Sun } from "lucide-react";
-import { useState } from "react";
+import { NotificationBell } from "@/components/ares/notification-bell";
+import { HealthIndicator } from "@/components/ares/health-indicator";
+import { Moon, Sun } from "lucide-react";
 import { useUIStore } from "@/lib/ares/store";
 
 export default function DashboardLayout({
@@ -13,7 +13,6 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [searchValue, setSearchValue] = useState("");
   const theme = useUIStore((s) => s.theme);
   const setTheme = useUIStore((s) => s.setTheme);
   const isDark = theme === "dark";
@@ -26,32 +25,7 @@ export default function DashboardLayout({
         {/* TopBar */}
         <header className="h-16 border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-8">
           <div className="flex items-center gap-6 flex-1">
-            <div className="flex items-center gap-3 px-3 py-1.5 bg-secondary/50 border border-border rounded-xl text-muted-foreground max-w-md w-full ring-shadow transition-shadow focus-within:ring-ring focus-within:ring-1 group">
-              <Search className="w-4 h-4" />
-              <input 
-                type="text" 
-                placeholder="Search targets, detections, or assets..." 
-                className="bg-transparent border-none text-[15px] w-full focus:ring-0 placeholder:text-muted-foreground/60 text-foreground"
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-              />
-              {searchValue ? (
-                <button onClick={() => setSearchValue("")}>
-                   <X className="w-3.5 h-3.5 hover:text-foreground transition-colors" />
-                </button>
-              ) : (
-                <kbd className="ml-auto text-[10px] bg-card px-1.5 py-0.5 rounded border border-border font-mono">⌘ K</kbd>
-              )}
-            </div>
-            
-            <div className="h-4 w-px bg-border hidden md:block" />
-            
-            <div className="items-center gap-4 hidden lg:flex">
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-widest">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Monitoring Active</span>
-              </div>
-            </div>
+            <HealthIndicator />
           </div>
 
           <div className="flex items-center gap-3">
@@ -59,8 +33,8 @@ export default function DashboardLayout({
               type="button"
               onClick={() => setTheme(isDark ? "light" : "dark")}
               className="p-2 text-muted-foreground hover:text-foreground transition-all hover:bg-secondary/50 rounded-lg border border-transparent hover:border-border"
-              title={isDark ? "Mode terang" : "Mode gelap"}
-              aria-label={isDark ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
+              title={isDark ? "Light mode" : "Dark mode"}
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDark ? (
                 <Sun className="w-5 h-5" />
@@ -68,10 +42,7 @@ export default function DashboardLayout({
                 <Moon className="w-5 h-5" />
               )}
             </button>
-            <Link href="/dashboard/notifications" className="p-2 text-muted-foreground hover:text-foreground transition-all hover:bg-secondary/50 rounded-lg relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full border-2 border-card" />
-            </Link>
+            <NotificationBell />
             <div className="h-8 w-px bg-border mx-1 hidden sm:block" />
             <WalletSessionControls />
           </div>

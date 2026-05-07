@@ -11,3 +11,4 @@ export * from "./tools/index.js";
 export * from "./assurance-tools/index.js";
 export * from "./findings/index.js";
 export * from "./sandbox/index.js";
+export * from "./hierarchy/index.js";

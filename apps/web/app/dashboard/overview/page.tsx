@@ -22,7 +22,6 @@ import {
   Area
 } from "recharts";
 import { useState, useEffect } from "react";
-import { Detection, Target, Agent } from "@/lib/ares/mock-data";
 import { safeResponseJson } from "@/lib/safe-response-json";
 import { cn } from "@/lib/utils";
 

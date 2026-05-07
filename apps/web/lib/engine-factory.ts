@@ -30,5 +30,12 @@ if (process.env.ASST_WEB_ALLOW_WRITE !== "1") {
 export function createPublicOrchestrator(opts: PublicOrchestratorOptions = {}) {
   const repoRoot = opts.repoRoot ?? resolveRepoRoot();
 
-  return new Orchestrator(repoRoot, { model: opts.model });
+  // In local development we want chat routes to work even when the default
+  // provider (Google) is gated/disabled. Prefer an explicit env override,
+  // otherwise fall back to a cheap OpenRouter model.
+  const model =
+    opts.model ??
+    process.env.ASST_ORCHESTRATOR_MODEL ??
+    "openrouter:nvidia/nemotron-nano-9b-v2:free";
+  return new Orchestrator(repoRoot, { model });
 }

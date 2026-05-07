@@ -65,8 +65,8 @@ export const SUB_AGENT_CONFIGS: SubAgentConfig[] = [
     name: "solana_vulnerability_analyst",
     description:
       "Analyzes Solana program code for vulnerabilities: Anchor constraints, PDA seeds, signer checks, CPI boundaries, oracle dependencies.",
-    primaryModel: "google:gemini-2.0-flash",
-    fallbackModels: ["google:gemini-2.5-flash"],
+    primaryModel: "openrouter:nvidia/nemotron-nano-9b-v2:free",
+    fallbackModels: ["openrouter:openai/gpt-oss-20b:free"],
     skills: [
       "solana-defi-vulnerability-analyst-agent",
       "sealevel-attacks-solana",
@@ -85,8 +85,8 @@ export const SUB_AGENT_CONFIGS: SubAgentConfig[] = [
     name: "defi_security_auditor",
     description:
       "Audits DeFi protocols for admin takeover vectors, upgrade authority risks, flash loan patterns, governance centralization.",
-    primaryModel: "google:gemini-2.0-flash",
-    fallbackModels: ["google:gemini-2.5-flash"],
+    primaryModel: "openrouter:nvidia/nemotron-nano-9b-v2:free",
+    fallbackModels: ["openrouter:openai/gpt-oss-20b:free"],
     skills: [
       "defi-security-audit-agent",
       "defi-admin-takeover-mitigation-lessons",
@@ -150,8 +150,8 @@ export const SUB_AGENT_CONFIGS: SubAgentConfig[] = [
     name: "report_synthesizer",
     description:
       "Synthesizes findings from all sub-agents into a professional security report with severity ratings and remediation advice.",
-    primaryModel: "google:gemini-2.5-flash",
-    fallbackModels: ["google:gemini-2.0-flash"],
+    primaryModel: "openrouter:openai/gpt-oss-20b:free",
+    fallbackModels: ["openrouter:nvidia/nemotron-nano-9b-v2:free"],
     skills: [
       "blockchain-intelligence-playbook",
       "cmichel-smart-contract-auditor-guide",
