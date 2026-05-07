@@ -6,7 +6,7 @@
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
     "load-test:chat": "node scripts/load-test-chat.mjs",
     "dev": "next dev",
-    "build": "next build",
+    "build": "pnpm --filter @ares/observability build && pnpm --filter @ares/queue build && pnpm --filter @ares/engine build && next build",
     "start": "next start",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
