@@ -23,13 +23,13 @@ import { StatusBadge } from "./status-badge";
 
 const navItems = [
   { name: "Overview", href: "/dashboard/overview", icon: LayoutDashboard },
+  { name: "Console", href: "/dashboard/console", icon: Terminal },
   { name: "Targets", href: "/dashboard/targets", icon: Target },
   { name: "Runs", href: "/dashboard/runs", icon: History },
   { name: "Detections", href: "/dashboard/detections", icon: ShieldAlert },
   { name: "Agents", href: "/dashboard/agents", icon: Activity },
   { name: "Reports", href: "/dashboard/reports", icon: FileText },
   { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
-  { name: "Console", href: "/dashboard/console", icon: Terminal },
 ];
 
 export function Sidebar() {

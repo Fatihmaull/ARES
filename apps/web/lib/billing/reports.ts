@@ -69,6 +69,10 @@ export interface FindingRow {
   title: string;
   detail: Record<string, unknown>;
   created_at: Date;
+  status: string;
+  resolved_at: Date | null;
+  resolved_by_wallet: string | null;
+  notes: string | null;
 }
 
 export async function listFindings(input: {
@@ -78,7 +82,8 @@ export async function listFindings(input: {
 }): Promise<FindingRow[]> {
   if (input.wallet) {
     const r = await input.pool.query<FindingRow>(
-      `SELECT f.id::text, f.run_id, f.agent, f.layer, f.severity, f.title, f.detail, f.created_at
+      `SELECT f.id::text, f.run_id, f.agent, f.layer, f.severity, f.title, f.detail, f.created_at,
+              f.status, f.resolved_at, f.resolved_by_wallet, f.notes
          FROM findings f
          JOIN runs r ON r.id = f.run_id
         WHERE r.wallet = $1
@@ -89,7 +94,8 @@ export async function listFindings(input: {
     return r.rows;
   }
   const r = await input.pool.query<FindingRow>(
-    `SELECT id::text, run_id, agent, layer, severity, title, detail, created_at
+    `SELECT id::text, run_id, agent, layer, severity, title, detail, created_at,
+            status, resolved_at, resolved_by_wallet, notes
        FROM findings ORDER BY created_at DESC LIMIT $1`,
     [input.limit],
   );

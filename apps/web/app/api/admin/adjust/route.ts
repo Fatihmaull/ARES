@@ -4,6 +4,8 @@ import { upsertWalletFree } from "@/lib/billing/ledger";
 import { getPool } from "@/lib/db/pool";
 import { isAdminWallet } from "@/lib/admin";
 
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
   const requestId = getRequestId(req);
   const session = await readWalletSession(req);

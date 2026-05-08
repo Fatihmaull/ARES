@@ -111,6 +111,39 @@
   }
 }
 
+/* Solana wallet adapter UI: de-purple to match ARES theme */
+.wallet-adapter-button {
+  background: hsl(var(--secondary) / 0.4) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 0.5rem !important;
+  height: 2.25rem !important;
+  padding: 0 0.75rem !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+.wallet-adapter-button:hover {
+  background: hsl(var(--secondary)) !important;
+}
+.wallet-adapter-button:not([disabled]):hover {
+  transform: none !important;
+}
+.wallet-adapter-button-trigger {
+  background: hsl(var(--secondary) / 0.4) !important;
+}
+.wallet-adapter-modal-wrapper {
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+.wallet-adapter-modal-title {
+  color: hsl(var(--foreground)) !important;
+}
+.wallet-adapter-modal-button-close {
+  background: transparent !important;
+}
+
 /* Ampcode-style grid primitives */
 @layer components {
   .rail {

@@ -1,282 +1,400 @@
 "use client";
 
-import { 
-  ShieldCheck, 
-  AlertTriangle, 
-  Activity, 
-  ArrowUpRight,
-  Shield,
-  Zap,
-  Target as TargetIcon,
-  Terminal,
-  ExternalLink
-} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
-  Area
-} from "recharts";
-import { useState, useEffect } from "react";
-import { safeResponseJson } from "@/lib/safe-response-json";
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  ExternalLink,
+  FileText,
+  Loader2,
+  Play,
+  Shield,
+  ShieldCheck,
+  Target as TargetIcon,
+  Zap,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { safeResponseJson } from "@/lib/safe-response-json";
+import { NewScanDialog } from "@/components/ares/new-scan-dialog";
+
+interface OverviewStatsDto {
+  walletScoped: boolean;
+  findingsOpenBySeverity: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    informational: number;
+  };
+  findingsOpenTotal: number;
+  runsLast7d: number;
+  creditsBurnedLast7d: number;
+  lastSuccessfulScanAt: string | null;
+  generatedAt: string;
+}
+
+interface FindingDto {
+  id: string;
+  source: string;
+  severity: string;
+  rule: string;
+  message: string;
+  runId: string;
+  createdAt: string;
+}
 
 export default function OverviewPage() {
-  const [findings, setFindings] = useState<any[]>([]);
-  const [posture, setPosture] = useState<any>(null);
-  const [agents, setAgents] = useState<any[]>([]);
-  const [reports, setReports] = useState<any[]>([]);
+  const [stats, setStats] = useState<OverviewStatsDto | null>(null);
+  const [recent, setRecent] = useState<FindingDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isScanning, setIsScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [openScan, setOpenScan] = useState(false);
+  const [recentlyEnqueued, setRecentlyEnqueued] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [findingsRes, postureRes, agentsRes, reportsRes] = await Promise.all([
-          fetch("/api/findings"),
-          fetch("/api/posture"),
-          fetch("/api/agents"),
-          fetch("/api/reports"),
-        ]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [statsRes, findingsRes] = await Promise.all([
+        fetch("/api/analytics/overview", { cache: "no-store" }),
+        fetch("/api/findings?limit=5", { cache: "no-store" }),
+      ]);
+      const statsBody = await safeResponseJson<{
+        ok?: boolean;
+        data?: OverviewStatsDto;
+        error?: { message?: string };
+      }>(statsRes);
+      const findingsBody = await safeResponseJson<{
+        ok?: boolean;
+        data?: { findings?: FindingDto[] };
+      }>(findingsRes);
 
-        const [findingsData, postureData, agentsData, reportsData] = await Promise.all([
-          safeResponseJson<any>(findingsRes),
-          safeResponseJson<any>(postureRes),
-          safeResponseJson<any>(agentsRes),
-          safeResponseJson<any>(reportsRes),
-        ]);
-
-        setFindings(findingsData?.data?.findings ?? findingsData?.findings ?? []);
-        setPosture(postureData?.data ?? postureData ?? null);
-        setAgents(agentsData?.data?.agents ?? agentsData ?? []);
-        setReports(reportsData?.data?.reports ?? reportsData ?? []);
-      } catch (err) {
-        console.error("Failed to fetch dashboard data:", err);
-      } finally {
-        setLoading(false);
+      if (statsRes.ok && statsBody?.ok && statsBody.data) {
+        setStats(statsBody.data);
+      } else if (statsRes.status === 503) {
+        setError("Database is not configured.");
+      } else {
+        setError(statsBody?.error?.message ?? `Stats failed (${statsRes.status}).`);
       }
+
+      setRecent(findingsBody?.data?.findings?.slice(0, 5) ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
     }
-    fetchData();
   }, []);
 
-  const handleStartScan = async () => {
-    setIsScanning(true);
-    try {
-      const res = await fetch("/api/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target: "." })
-      });
-      if (res.ok) {
-        alert("Security scan initiated. Check the Operator Console for real-time logs.");
-      }
-    } catch (err) {
-      console.error("Scan trigger failed:", err);
-    } finally {
-      setIsScanning(false);
-    }
-  };
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const criticalCount = findings.filter(f => f.severity === 'Critical').length;
-  const highCount = findings.filter(f => f.severity === 'High').length;
+  const fmt = (n: number) => n.toString().padStart(2, "0");
+  const totalCritHigh =
+    (stats?.findingsOpenBySeverity?.critical ?? 0) +
+    (stats?.findingsOpenBySeverity?.high ?? 0);
 
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-700">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 overflow-hidden">
         <div className="max-w-2xl">
-          <p className="text-[12px] font-sans font-semibold text-primary uppercase tracking-[0.2em] mb-3">Build for the frontier</p>
-          <h1 className="text-5xl md:text-6xl font-serif font-medium leading-tight text-foreground mb-4">Security Command</h1>
+          <p className="text-[12px] font-sans font-semibold text-primary uppercase tracking-[0.2em] mb-3">
+            Build for the frontier
+          </p>
+          <h1 className="text-5xl md:text-6xl font-serif font-medium leading-tight text-foreground mb-4">
+            Security Command
+          </h1>
           <p className="text-lg text-muted-foreground font-sans leading-relaxed">
-            Centralized monitoring and autonomous detection for your on-chain assets. 
-            Calm, precise, and operator-focused.
+            Centralized monitoring and autonomous detection for your on-chain
+            assets. Calm, precise, operator-focused.
           </p>
         </div>
         <div className="flex gap-3 shrink-0">
-          <Link href="/dashboard/reports" className="px-5 py-2.5 bg-secondary text-secondary-foreground rounded-xl text-[14px] font-medium hover:bg-muted transition-all ring-shadow">
-            Generate Report
-          </Link>
-          <button 
-            onClick={handleStartScan}
-            disabled={isScanning}
-            className={cn(
-              "px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-[14px] font-medium hover:opacity-90 transition-all shadow-xl shadow-primary/20 flex items-center gap-2",
-              isScanning && "opacity-50 cursor-not-allowed"
-            )}
+          <Link
+            href="/dashboard/reports"
+            className="px-5 py-2.5 bg-secondary text-secondary-foreground rounded-xl text-[14px] font-medium hover:bg-muted transition-all flex items-center gap-2"
           >
-            {isScanning ? (
-              <>
-                <Activity className="w-4 h-4 animate-spin" />
-                Scanning...
-              </>
-            ) : "Initiate Scan"}
+            <FileText className="w-4 h-4" />
+            Reports
+          </Link>
+          <button
+            type="button"
+            onClick={() => setOpenScan(true)}
+            className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-[14px] font-medium hover:opacity-90 transition-all shadow-xl shadow-primary/20 flex items-center gap-2"
+          >
+            <Play className="w-4 h-4" />
+            New scan
           </button>
         </div>
       </div>
 
-      {/* Hero Stats */}
+      {error && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-[14px] text-destructive">
+          {error}
+        </div>
+      )}
+
+      {recentlyEnqueued && (
+        <div className="rounded-xl border border-primary/30 bg-primary/10 px-5 py-4 text-[14px] flex items-center gap-3">
+          <CheckCircle2 className="w-4 h-4 text-primary" />
+          Scan enqueued as run{" "}
+          <Link
+            href={`/dashboard/runs?run=${encodeURIComponent(recentlyEnqueued)}`}
+            className="underline font-mono"
+          >
+            {recentlyEnqueued.slice(0, 8)}…
+          </Link>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          label="Security Posture" 
-          value={loading ? "..." : `${posture?.overall || 0}%`} 
-          trend={loading ? "" : posture?.grade || "F"} 
-          icon={<Shield className="w-5 h-5" />} 
+        <StatCard
+          label="Open critical+high"
+          value={loading ? "…" : fmt(totalCritHigh)}
+          trend={
+            stats
+              ? `${fmt(stats.findingsOpenBySeverity.critical)} critical · ${fmt(stats.findingsOpenBySeverity.high)} high`
+              : ""
+          }
+          icon={<AlertTriangle className="w-5 h-5" />}
+          isAlert={totalCritHigh > 0}
         />
-        <StatCard 
-          label="Assurance Reports" 
-          value={loading ? "..." : (reports?.length ?? 0).toString()} 
-          trend="Signed Archives" 
-          icon={<TargetIcon className="w-5 h-5" />} 
+        <StatCard
+          label="Open findings (all)"
+          value={loading ? "…" : fmt(stats?.findingsOpenTotal ?? 0)}
+          trend="Across all severities"
+          icon={<Shield className="w-5 h-5" />}
         />
-        <StatCard 
-          label="Critical Findings" 
-          value={loading ? "..." : criticalCount.toString()} 
-          trend={`${highCount} High`} 
-          isAlert={criticalCount > 0}
-          icon={<AlertTriangle className="w-5 h-5" />} 
+        <StatCard
+          label="Scan runs (7d)"
+          value={loading ? "…" : fmt(stats?.runsLast7d ?? 0)}
+          trend={stats?.lastSuccessfulScanAt ? `Last: ${formatRelative(stats.lastSuccessfulScanAt)}` : "No succeeded scans yet"}
+          icon={<Activity className="w-5 h-5" />}
         />
-        <StatCard 
-          label="Automation Jobs" 
-          value={loading ? "..." : `${agents.length} Agents`} 
-          trend="Synchronized" 
-          icon={<Zap className="w-5 h-5" />} 
+        <StatCard
+          label="Units burned (7d)"
+          value={loading ? "…" : fmt(stats?.creditsBurnedLast7d ?? 0)}
+          trend="Settled debits"
+          icon={<Zap className="w-5 h-5" />}
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Trend Chart */}
         <div className="lg:col-span-2 ares-card p-8 whisper-shadow">
-          <div className="flex items-center justify-between mb-10">
-            <h3 className="text-xl font-serif flex items-center gap-2">
-              <Activity className="w-5 h-5 text-primary" />
-              Posture Lifecycle
-            </h3>
-            <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
-              <span className="w-2 h-2 rounded-full bg-primary" />
-              Aggregate Confidence
-            </div>
-          </div>
-          <div className="h-[340px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={posture?.layers || []}>
-                <defs>
-                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.18} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontFamily: 'var(--font-sans)' }}
-                  dy={15}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontFamily: 'var(--font-sans)' }}
-                  domain={[0, 100]}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--border))', 
-                    borderRadius: '12px',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
-                  }}
-                  itemStyle={{ color: 'hsl(var(--primary))', fontFamily: 'var(--font-sans)' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="score" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2.5}
-                  fillOpacity={1} 
-                  fill="url(#colorScore)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          <h3 className="text-xl font-serif flex items-center gap-2 mb-6">
+            <TargetIcon className="w-5 h-5 text-primary" />
+            Open severity mix
+          </h3>
+          <SeverityBars stats={stats} loading={loading} />
         </div>
 
-        {/* Right Panel - Active Agents */}
         <div className="ares-card p-8 bg-secondary/30 flex flex-col">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-serif flex items-center gap-2">
-              <Terminal className="w-5 h-5 text-primary" />
-              Agent Systems
+              <AlertTriangle className="w-5 h-5 text-primary" />
+              Latest findings
             </h3>
-            <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-[10px] font-bold uppercase tracking-wider">Active</span>
+            <Link
+              href="/dashboard/detections"
+              className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
+            >
+              View all
+            </Link>
           </div>
-          
+
           <div className="space-y-3 flex-1">
-            {findings.slice(0, 5).map((finding, idx) => (
-              <div key={idx} className="p-4 rounded-xl bg-card border border-border flex items-center gap-4 group hover:ring-shadow transition-all">
-                <div className={cn(
-                  "w-2 h-2 rounded-full shrink-0",
-                  finding.severity === 'Critical' ? "bg-destructive animate-pulse" : 
-                  finding.severity === 'High' ? "bg-primary" : "bg-muted-foreground/30"
-                )} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-semibold text-foreground truncate">{finding.rule}</p>
-                  <p className="text-[12px] text-muted-foreground truncate font-sans">{finding.message}</p>
-                </div>
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                   <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
-                </div>
-              </div>
-            ))}
-            {findings.length === 0 && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-40 italic">
+            {loading && recent.length === 0 ? (
+              <p className="text-sm text-muted-foreground inline-flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Loading…
+              </p>
+            ) : recent.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-50 italic">
                 <ShieldCheck className="w-12 h-12 mb-3" />
-                <p className="text-sm">No active threats detected in latest telemetry buffers.</p>
+                <p className="text-sm">
+                  No findings yet — onboard a target and start a scan.
+                </p>
               </div>
+            ) : (
+              recent.map((f) => (
+                <Link
+                  key={f.id}
+                  href={`/dashboard/runs?run=${encodeURIComponent(f.runId)}`}
+                  className="block p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        "w-2 h-2 rounded-full shrink-0",
+                        f.severity === "Critical"
+                          ? "bg-destructive"
+                          : f.severity === "High"
+                            ? "bg-primary"
+                            : "bg-muted-foreground/40",
+                      )}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-semibold truncate">{f.rule}</p>
+                      <p className="text-[12px] text-muted-foreground truncate">
+                        {f.message}
+                      </p>
+                    </div>
+                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                  </div>
+                </Link>
+              ))
             )}
           </div>
-          
-          <button className="w-full py-2.5 mt-8 bg-card border border-border rounded-xl text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all uppercase tracking-[0.15em] font-sans">
-            Scale Autonomous Jobs
-          </button>
         </div>
+      </div>
+
+      <NewScanDialog
+        open={openScan}
+        onClose={() => setOpenScan(false)}
+        onEnqueued={({ runId }) => {
+          setRecentlyEnqueued(runId);
+          void load();
+        }}
+      />
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  trend,
+  icon,
+  isAlert,
+}: {
+  label: string;
+  value: string;
+  trend: string;
+  icon: React.ReactNode;
+  isAlert?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "ares-card p-6 whisper-shadow group relative overflow-hidden",
+        isAlert ? "border-destructive/30" : "",
+      )}
+    >
+      <div className="flex items-center justify-between mb-6">
+        <div
+          className={cn(
+            "w-10 h-10 rounded-xl flex items-center justify-center transition-colors shadow-sm",
+            isAlert
+              ? "bg-destructive/10 text-destructive"
+              : "bg-secondary text-primary group-hover:bg-primary group-hover:text-primary-foreground",
+          )}
+        >
+          {icon}
+        </div>
+      </div>
+      <div>
+        <p className="text-[13px] font-medium text-muted-foreground mb-1 font-sans">
+          {label}
+        </p>
+        <p className="text-4xl font-serif font-medium">{value}</p>
+        {trend && (
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/80 mt-2 font-mono">
+            {trend}
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value, trend, icon, isAlert }: { label: string, value: string, trend: string, icon: React.ReactNode, isAlert?: boolean }) {
-  const isNeutral = trend === "0";
-  const isDown = trend.startsWith("-");
+function SeverityBars({
+  stats,
+  loading,
+}: {
+  stats: OverviewStatsDto | null;
+  loading: boolean;
+}) {
+  if (loading || !stats) {
+    return (
+      <p className="text-sm text-muted-foreground inline-flex items-center gap-2">
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        Loading…
+      </p>
+    );
+  }
+
+  const items: { key: string; label: string; value: number; cls: string }[] = [
+    {
+      key: "critical",
+      label: "Critical",
+      value: stats.findingsOpenBySeverity.critical,
+      cls: "bg-destructive",
+    },
+    {
+      key: "high",
+      label: "High",
+      value: stats.findingsOpenBySeverity.high,
+      cls: "bg-primary",
+    },
+    {
+      key: "medium",
+      label: "Medium",
+      value: stats.findingsOpenBySeverity.medium,
+      cls: "bg-amber-500",
+    },
+    {
+      key: "low",
+      label: "Low",
+      value: stats.findingsOpenBySeverity.low,
+      cls: "bg-blue-500",
+    },
+    {
+      key: "info",
+      label: "Informational",
+      value: stats.findingsOpenBySeverity.informational,
+      cls: "bg-muted-foreground/40",
+    },
+  ];
+  const max = Math.max(1, ...items.map((i) => i.value));
 
   return (
-    <div className={cn(
-      "ares-card p-6 whisper-shadow hover:ring-shadow group relative overflow-hidden",
-      isAlert ? "border-destructive/30" : ""
-    )}>
-      <div className="flex items-center justify-between mb-6">
-        <div className={cn(
-          "w-10 h-10 rounded-xl flex items-center justify-center transition-colors shadow-sm",
-          isAlert ? "bg-destructive/10 text-destructive" : "bg-secondary text-primary group-hover:bg-primary group-hover:text-primary-foreground"
-        )}>
-          {icon}
-        </div>
-        {!isNeutral && (
-          <div className={cn(
-            "text-[12px] font-bold px-2.5 py-1 rounded-full",
-            isDown ? "bg-primary/10 text-primary" : "bg-emerald-500/10 text-emerald-500"
-          )}>
-            {trend}
+    <div className="space-y-3">
+      {items.map((it) => {
+        const pct = (it.value / max) * 100;
+        return (
+          <div key={it.key} className="space-y-1">
+            <div className="flex items-center justify-between text-[12px]">
+              <span className="text-muted-foreground uppercase tracking-[0.15em]">
+                {it.label}
+              </span>
+              <span className="font-mono">{it.value}</span>
+            </div>
+            <div className="h-2 rounded-full bg-secondary/50 overflow-hidden">
+              <div
+                className={cn("h-full transition-all duration-700", it.cls)}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
           </div>
-        )}
-      </div>
-      <div>
-        <p className="text-[13px] font-medium text-muted-foreground mb-1 font-sans">{label}</p>
-        <p className="text-4xl font-serif font-medium">{value}</p>
-      </div>
+        );
+      })}
     </div>
   );
+}
+
+function formatRelative(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "—";
+  const diffMs = Date.now() - then;
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const days = Math.floor(hr / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }

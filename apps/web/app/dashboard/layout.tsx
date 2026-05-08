@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { Sidebar } from "@/components/ares/sidebar";
 import { SolanaWalletProviders } from "@/components/wallet/solana-wallet-providers";
 import { WalletSessionControls } from "@/components/wallet/wallet-session-controls";
@@ -7,6 +9,7 @@ import { NotificationBell } from "@/components/ares/notification-bell";
 import { HealthIndicator } from "@/components/ares/health-indicator";
 import { Moon, Sun } from "lucide-react";
 import { useUIStore } from "@/lib/ares/store";
+import { safeResponseJson } from "@/lib/safe-response-json";
 
 export default function DashboardLayout({
   children,
@@ -16,6 +19,37 @@ export default function DashboardLayout({
   const theme = useUIStore((s) => s.theme);
   const setTheme = useUIStore((s) => s.setTheme);
   const isDark = theme === "dark";
+
+  const [auth, setAuth] = useState<
+    | { status: "loading" }
+    | { status: "guest" }
+    | { status: "signedIn"; wallet: string }
+  >({ status: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me", { credentials: "include" });
+        const body = await safeResponseJson<{
+          ok?: boolean;
+          data?: { authenticated?: boolean; wallet?: string };
+        }>(res);
+        if (cancelled) return;
+        const d = body?.data;
+        if (body?.ok && d?.authenticated && typeof d.wallet === "string") {
+          setAuth({ status: "signedIn", wallet: d.wallet });
+        } else {
+          setAuth({ status: "guest" });
+        }
+      } catch {
+        if (!cancelled) setAuth({ status: "guest" });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <SolanaWalletProviders>
@@ -49,7 +83,20 @@ export default function DashboardLayout({
         </header>
 
         <main className="flex-1 p-8 md:p-12 overflow-y-auto w-full max-w-7xl mx-auto">
-          {children}
+          {auth.status === "loading" ? (
+            <div className="py-24 text-center text-muted-foreground">Loading…</div>
+          ) : auth.status === "guest" ? (
+            <div className="py-24 flex flex-col items-center text-center gap-4">
+              <h1 className="text-3xl font-serif">Connect wallet to continue</h1>
+              <p className="text-sm text-muted-foreground max-w-xl">
+                Dashboard data is private. Connect a wallet and sign to start a
+                session, then you&apos;ll be able to see targets, runs, findings,
+                reports, and notifications.
+              </p>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
       </div>

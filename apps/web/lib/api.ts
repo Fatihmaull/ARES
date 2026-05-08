@@ -140,17 +140,9 @@ export function requireApiKeyOrPublic(
   req: Request,
 ): { ok: true; requestId: string } | { ok: false; response: NextResponse<ApiErrorBody> } {
   const requestId = getRequestId(req);
-  const expectedKey = process.env.ASST_WEB_API_KEY?.trim();
-  if (!expectedKey) {
-    return { ok: true, requestId };
-  }
-  const headerValue = req.headers.get("x-api-key");
-  if (headerValue !== expectedKey) {
-    return {
-      ok: false,
-      response: apiError(requestId, "UNAUTHORIZED", "Missing or invalid API key.", 401),
-    };
-  }
+  // Browser-callable APIs should not hard-require the operator key. Operator-only
+  // routes must use requireApiKey(). authenticateIngress() still marks requests
+  // as operator when x-api-key matches.
   return { ok: true, requestId };
 }
 

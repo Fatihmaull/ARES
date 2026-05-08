@@ -16,6 +16,7 @@
     "@ares/engine": "workspace:*",
     "@ares/observability": "workspace:*",
     "@ares/queue": "workspace:*",
+    "jspdf": "^3.0.4",
     "pg": "^8.16.3",
     "tsx": "^4.21.0"
   },

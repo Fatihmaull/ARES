@@ -16,6 +16,7 @@ export const TOPUP_BUNDLES: readonly TopUpBundle[] = [
 export const ACTION_COST_UNITS = {
   chat: 1,
   scan: 10,
+  report: 2,
 } as const;
 
 /** Anonymous preview (draft §2). */

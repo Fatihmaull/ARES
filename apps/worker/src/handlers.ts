@@ -1,4 +1,6 @@
-import { resolve } from "node:path";
+import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { randomUUID } from "node:crypto";
 
 import { Orchestrator } from "@ares/engine";
 import type {
@@ -12,16 +14,25 @@ import type {
 } from "@ares/queue";
 
 import { getPool } from "./db.js";
+import { notifyWallet } from "./notify.js";
 import {
   appendTraceEvent,
+  insertPdfReportRecord,
+  listFindingsForRun,
   recordFinding,
   refundDebit,
-  setRunStatus,
   settleDebit,
+  setRunStatus,
 } from "./runs.js";
 
 function repoRoot(): string {
-  return process.env.ASST_REPO_ROOT?.trim() || resolve(process.cwd());
+  const env = process.env.ASST_REPO_ROOT?.trim();
+  if (env) return resolve(env);
+  const cwd = resolve(process.cwd());
+  if (existsSync(join(cwd, "pnpm-workspace.yaml"))) {
+    return cwd;
+  }
+  return resolve(cwd, "../..");
 }
 
 export const dispatchJob: JobHandler = async (payload: AnyJobPayload, meta: JobMeta) => {
@@ -79,6 +90,14 @@ async function runScan(payload: ScanJobPayload, meta: JobMeta): Promise<void> {
     if (payload.provisionalDebitId !== undefined) {
       await settleDebit(pool, payload.provisionalDebitId);
     }
+    await notifyWallet({
+      pool,
+      wallet: payload.wallet ?? undefined,
+      kind: "scan_complete",
+      title: "Scan completed",
+      body: `Run ${payload.runId.slice(0, 8)}… finished successfully.`,
+      relatedRunId: payload.runId,
+    }).catch(() => {});
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     await setRunStatus({ pool, id: payload.runId, status: "failed", error: msg });
@@ -91,6 +110,14 @@ async function runScan(payload: ScanJobPayload, meta: JobMeta): Promise<void> {
       title: "Scan failed",
       detail: { error: msg },
     });
+    await notifyWallet({
+      pool,
+      wallet: payload.wallet ?? undefined,
+      kind: "scan_failed",
+      title: "Scan failed",
+      body: msg.slice(0, 500),
+      relatedRunId: payload.runId,
+    }).catch(() => {});
     if (payload.provisionalDebitId !== undefined) {
       await refundDebit(pool, payload.provisionalDebitId);
     }
@@ -160,21 +187,104 @@ async function runTool(payload: ToolJobPayload, _meta: JobMeta): Promise<void> {
 async function runReport(payload: ReportJobPayload, _meta: JobMeta): Promise<void> {
   const pool = getPool();
   await setRunStatus({ pool, id: payload.runId, status: "running" });
-  // Report synthesis from a parent run is wired alongside object storage in P6.
-  await appendTraceEvent({
-    pool,
-    runId: payload.runId,
-    event: {
-      ts: Date.now(),
-      layer: "orchestrator",
+
+  try {
+    const findings = await listFindingsForRun(pool, payload.parentRunId);
+    const { jsPDF } = await import("jspdf");
+
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("ARES findings report", 14, 18);
+    doc.setFontSize(10);
+    doc.text(`Parent run: ${payload.parentRunId}`, 14, 26);
+    doc.text(`Generated: ${new Date().toISOString()}`, 14, 32);
+
+    let y = 42;
+    const lineHeight = 6;
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    for (const f of findings) {
+      const block = `[${f.severity}] ${f.title}`;
+      const lines = doc.splitTextToSize(block, 180);
+      for (const line of lines) {
+        if (y > pageHeight - 20) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.text(line, 14, y);
+        y += lineHeight;
+      }
+      y += 2;
+    }
+
+    if (findings.length === 0) {
+      doc.text("No findings recorded for this run.", 14, y);
+    }
+
+    const pdfBytes = doc.output("arraybuffer") as ArrayBuffer;
+    const buf = Buffer.from(pdfBytes);
+    const reportId = randomUUID();
+    const reportsDir = join(repoRoot(), ".asst", "reports");
+    if (!existsSync(reportsDir)) {
+      mkdirSync(reportsDir, { recursive: true });
+    }
+    const relativeKey = join(".asst", "reports", `${reportId}.pdf`);
+    const absPath = join(repoRoot(), ".asst", "reports", `${reportId}.pdf`);
+    writeFileSync(absPath, buf);
+
+    await insertPdfReportRecord({
+      pool,
+      reportId,
+      synthesisRunId: payload.runId,
+      wallet: payload.wallet,
+      title: `Findings report (${payload.parentRunId.slice(0, 8)}…)`,
+      summary: `${findings.length} finding(s) from parent run.`,
+      objectKey: relativeKey.replace(/\\/g, "/"),
+      bucket: "local-fs",
+      bytes: buf.byteLength,
+    });
+
+    await appendTraceEvent({
+      pool,
+      runId: payload.runId,
+      event: {
+        ts: Date.now(),
+        layer: "orchestrator",
+        agent: "report_synthesizer",
+        kind: "result",
+        message: "report pdf written",
+        meta: { reportId, parentRunId: payload.parentRunId },
+      },
+    });
+
+    await setRunStatus({ pool, id: payload.runId, status: "succeeded", unitsBilled: 2 });
+    if (payload.provisionalDebitId !== undefined) {
+      await settleDebit(pool, payload.provisionalDebitId);
+    }
+
+    await notifyWallet({
+      pool,
+      wallet: payload.wallet ?? undefined,
+      kind: "report_ready",
+      title: "Report ready",
+      body: `Download report ${reportId.slice(0, 8)}… from the Reports tab.`,
+      relatedRunId: payload.runId,
+    }).catch(() => {});
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await setRunStatus({ pool, id: payload.runId, status: "failed", error: msg });
+    await recordFinding({
+      pool,
+      runId: payload.runId,
       agent: "report_synthesizer",
-      kind: "result",
-      message: "report synthesis stubbed",
-      meta: { parentRunId: payload.parentRunId },
-    },
-  });
-  await setRunStatus({ pool, id: payload.runId, status: "succeeded", unitsBilled: 2 });
-  if (payload.provisionalDebitId !== undefined) {
-    await settleDebit(pool, payload.provisionalDebitId);
+      layer: "orchestrator",
+      severity: "high",
+      title: "Report synthesis failed",
+      detail: { error: msg },
+    });
+    if (payload.provisionalDebitId !== undefined) {
+      await refundDebit(pool, payload.provisionalDebitId);
+    }
+    throw err;
   }
 }

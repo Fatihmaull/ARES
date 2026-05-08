@@ -5,7 +5,7 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SiteNav } from "@/components/ares/site-nav";
 import { SiteFooter } from "@/components/ares/site-footer";
-import { TerminalPlayer } from "@/components/ares/terminal-player";
+// TerminalPlayer intentionally removed: ares-cli onboarding is coming soon.
 
 export default function LandingPage() {
   return (
@@ -55,10 +55,10 @@ function Hero() {
 
       <div className="col-span-full md:col-span-6 lg:col-start-2 lg:col-span-5 cell-pad cell-pad--stroke flex flex-col sm:flex-row gap-3 pt-2">
         <Link
-          href="/dashboard/overview"
+          href="/dashboard/console"
           className="group inline-flex items-center justify-between gap-6 px-4 py-3 bg-foreground text-background font-mono text-[12px] uppercase tracking-[0.18em] hover:bg-primary transition-colors"
         >
-          Launch Command Center
+          Connect wallet and launch console
           <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
         </Link>
         <Link
@@ -81,15 +81,26 @@ function Install() {
       <div className="col-span-full md:col-span-2 lg:col-start-2 lg:col-span-2 cell-pad cell-pad--stroke flex flex-col gap-2">
         <span className="label-accent">Install ARES</span>
         <p className="type-lg font-serif tracking-tight">
-          Available in terminal
+          Coming soon
         </p>
         <p className="type-sm text-muted-foreground max-w-[32ch]">
-          One line installs the agent, the CLI, and the updater.
+          The CLI install flow is being rebuilt for web-first onboarding.
         </p>
       </div>
 
       <div className="col-span-full md:col-span-4 lg:col-start-4 lg:col-span-3 cell-pad">
-        <TerminalPlayer />
+        <div className="border border-border bg-card p-6">
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            ares-cli
+          </p>
+          <p className="mt-3 text-[14px] text-foreground leading-relaxed">
+            CLI installation and agent daemon support will return as a polished
+            “coming soon” release.
+          </p>
+          <p className="mt-2 text-[12px] text-muted-foreground">
+            For now, connect a wallet and use the in-browser console.
+          </p>
+        </div>
       </div>
     </section>
   );

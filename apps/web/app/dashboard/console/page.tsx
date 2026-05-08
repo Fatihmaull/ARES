@@ -1,40 +1,88 @@
 "use client";
 
-import { 
-  Zap, 
-  Terminal as TerminalIcon, 
-  Play, 
-  Square, 
-  ShieldCheck, 
-  Activity, 
-  Cpu, 
-  Search, 
+import {
+  Activity,
+  ChevronRight,
+  Cpu,
   Lock,
-  ChevronRight
+  Play,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Square,
+  Terminal as TerminalIcon,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useRef, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { safeResponseJson } from "@/lib/safe-response-json";
+import { useConsoleStore } from "@/lib/console/store";
 
-interface LogEntry {
+type RunDto = {
   id: string;
-  source: string;
-  level: 'info' | 'warn' | 'error' | 'security';
-  message: string;
-  timestamp: string;
-}
+  kind: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "canceled";
+  createdAt: string;
+};
 
 export default function ConsolePage() {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [streamEnabled, setStreamEnabled] = useState(true);
+  const [health, setHealth] = useState<any>(null);
+  const [runCounts, setRunCounts] = useState<{ queued: number; running: number }>({
+    queued: 0,
+    running: 0,
+  });
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const logs = useConsoleStore((s) => s.logs);
+  const addLog = useConsoleStore((s) => s.addLog);
+  const clear = useConsoleStore((s) => s.clear);
+  const connected = useConsoleStore((s) => s.connected);
+  const setConnected = useConsoleStore((s) => s.setConnected);
+  const lastLatencyMs = useConsoleStore((s) => s.lastLatencyMs);
+  const setLastLatencyMs = useConsoleStore((s) => s.setLastLatencyMs);
+
+  const loadVitals = useCallback(async () => {
+    try {
+      const [healthRes, runsRes] = await Promise.all([
+        fetch("/api/health", { cache: "no-store" }),
+        fetch("/api/runs?limit=100", { cache: "no-store" }),
+      ]);
+      const healthBody = await safeResponseJson<any>(healthRes);
+      const runsBody = await safeResponseJson<{ ok?: boolean; data?: { runs?: RunDto[] } }>(
+        runsRes,
+      );
+      setHealth(healthBody?.data ?? healthBody ?? null);
+      const runs = runsBody?.data?.runs ?? [];
+      setRunCounts({
+        queued: runs.filter((r) => r.status === "queued").length,
+        running: runs.filter((r) => r.status === "running").length,
+      });
+    } catch {
+      // best-effort
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
+    void loadVitals();
+    const t = setInterval(() => void loadVitals(), 10_000);
+    return () => clearInterval(t);
+  }, [loadVitals]);
+
+  useEffect(() => {
+    if (!streamEnabled) {
+      setConnected(false);
+      return;
+    }
 
     let intentionalClose = false;
     const eventSource = new EventSource("/api/console/stream");
+    setConnected(true);
 
     eventSource.onmessage = (event) => {
       try {
@@ -42,27 +90,17 @@ export default function ConsolePage() {
           type?: string;
           id?: string;
           source?: string;
-          level?: LogEntry["level"];
+          level?: "info" | "warn" | "error" | "security";
           message?: string;
           timestamp?: string;
         };
         if (data.type === "log" && data.message && data.timestamp) {
-          const entry: LogEntry = {
-            id:
-              data.id ??
-              `${data.timestamp}:${data.message.slice(0, 32)}`,
+          addLog({
+            id: data.id ?? `${data.timestamp}:${data.message.slice(0, 32)}`,
             source: data.source ?? "ARES",
             level: data.level ?? "info",
             message: data.message,
             timestamp: data.timestamp,
-          };
-          setLogs((prev) => {
-            const exists = prev.some(
-              (l) =>
-                l.timestamp === entry.timestamp && l.message === entry.message
-            );
-            if (exists) return prev;
-            return [...prev, entry];
           });
           setLoading(false);
         }
@@ -73,17 +111,7 @@ export default function ConsolePage() {
 
     eventSource.onerror = () => {
       if (intentionalClose) return;
-      // Browser passes Event — it stringifies as {} in console; use readyState.
-      const state = eventSource.readyState;
-      if (state === EventSource.CLOSED) {
-        if (process.env.NODE_ENV === "development") {
-          console.warn(
-            "[console/stream] SSE closed (readyState=CLOSED). If this appears once in dev, React Strict Mode may have torn down the first connection."
-          );
-        }
-      } else {
-        console.warn("[console/stream] SSE issue; readyState=", state);
-      }
+      setConnected(false);
       eventSource.close();
       setLoading(false);
     };
@@ -91,8 +119,9 @@ export default function ConsolePage() {
     return () => {
       intentionalClose = true;
       eventSource.close();
+      setConnected(false);
     };
-  }, []);
+  }, [streamEnabled, addLog, setConnected]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -102,46 +131,74 @@ export default function ConsolePage() {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
-    const userMsg: LogEntry = {
-      id: Date.now().toString(),
-      source: 'Operator',
-      level: 'info',
+    addLog({
+      id: `${Date.now()}`,
+      source: "Operator",
+      level: "info",
       message: inputValue,
-      timestamp: new Date().toISOString()
-    };
-
-    setLogs(prev => [...prev, userMsg]);
+      timestamp: new Date().toISOString(),
+    });
     const cmd = inputValue;
     setInputValue("");
 
     try {
+      setSending(true);
+      const t0 = performance.now();
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: cmd }),
       });
-      const data = await res.json();
-      const responseMessage = data?.data?.response || data?.response || "Command executed successfully.";
-      
-      const agentMsg: LogEntry = {
-        id: (Date.now() + 1).toString(),
-        source: 'ARES',
-        level: 'security',
+      const t1 = performance.now();
+      setLastLatencyMs(Math.round(t1 - t0));
+
+      const data = await safeResponseJson<any>(res);
+      const responseMessage = data?.data?.response || data?.response || "No response.";
+
+      addLog({
+        id: `${Date.now() + 1}`,
+        source: "ARES",
+        level: res.ok ? "security" : "error",
         message: responseMessage,
-        timestamp: new Date().toISOString()
-      };
-      setLogs(prev => [...prev, agentMsg]);
+        timestamp: new Date().toISOString(),
+      });
     } catch (err) {
-      const errMsg: LogEntry = {
-        id: (Date.now() + 1).toString(),
-        source: 'System',
-        level: 'error',
-        message: "Failed to communicate with the ARES engine.",
-        timestamp: new Date().toISOString()
-      };
-      setLogs(prev => [...prev, errMsg]);
+      addLog({
+        id: `${Date.now() + 1}`,
+        source: "System",
+        level: "error",
+        message: err instanceof Error ? err.message : "Failed to reach /api/chat.",
+        timestamp: new Date().toISOString(),
+      });
+    } finally {
+      setSending(false);
     }
   };
+
+  const bufferUsage = useMemo(() => {
+    const chars = logs.reduce((acc, l) => acc + l.message.length, 0);
+    const pct = Math.max(0, Math.min(100, Math.round((chars / 20000) * 100)));
+    return { chars, pct };
+  }, [logs]);
+
+  const memoryMap = useMemo(() => {
+    const text = logs.slice(-40).map((l) => l.message).join(" ");
+    const tokens = text
+      .toLowerCase()
+      .replace(/[^a-z0-9_ -]/g, " ")
+      .split(/\s+/)
+      .filter(
+        (t) =>
+          t.length >= 5 &&
+          !["which", "there", "their", "about", "would", "could"].includes(t),
+      );
+    const counts = new Map<string, number>();
+    for (const t of tokens) counts.set(t, (counts.get(t) ?? 0) + 1);
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([w, c]) => ({ w, c }));
+  }, [logs]);
 
   return (
     <div className="h-full flex flex-col space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
@@ -155,13 +212,30 @@ export default function ConsolePage() {
           </p>
         </div>
         <div className="flex gap-3 shrink-0">
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-secondary text-secondary-foreground rounded-xl text-[14px] font-medium hover:bg-muted transition-all ring-shadow">
+          <button
+            type="button"
+            onClick={() => setStreamEnabled(false)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-secondary text-secondary-foreground rounded-xl text-[14px] font-medium hover:bg-muted transition-all ring-shadow"
+          >
             <Square className="w-4 h-4" />
             Terminate All
           </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-[14px] font-medium hover:opacity-90 transition-all shadow-xl shadow-primary/20">
+          <button
+            type="button"
+            onClick={() => setStreamEnabled(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-[14px] font-medium hover:opacity-90 transition-all shadow-xl shadow-primary/20"
+          >
             <Play className="w-4 h-4" />
             Resume System
+          </button>
+          <button
+            type="button"
+            onClick={() => clear()}
+            className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-[14px] font-medium hover:bg-secondary/50 transition-all"
+            title="Clear console history (local only)"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Clear
           </button>
         </div>
       </div>
@@ -178,8 +252,13 @@ export default function ConsolePage() {
                  </div>
                  <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-[10px] font-mono text-[#87867f] uppercase tracking-tighter">
-                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                       Synchronized
+                       <span
+                         className={cn(
+                           "w-2 h-2 rounded-full",
+                           connected ? "bg-emerald-500 animate-pulse" : "bg-amber-500",
+                         )}
+                       />
+                       {connected ? "Synchronized" : "Disconnected"}
                     </div>
                     <div className="h-4 w-px bg-[#30302e]" />
                     <button className="text-[#87867f] hover:text-[#faf9f5] transition-colors p-1">
@@ -214,23 +293,29 @@ export default function ConsolePage() {
                        type="text"
                        value={inputValue}
                        onChange={(e) => setInputValue(e.target.value)}
-                       placeholder="Enter instruction for autonomous agents..." 
+                       placeholder="Type a prompt and press Enter…" 
                        className="bg-transparent border-none p-0 focus:ring-0 text-[#faf9f5] w-full placeholder:text-[#5e5d59] mt-[-2px]" 
                      />
                   </form>
+                  {sending && (
+                    <div className="flex gap-4 opacity-70">
+                       <span className="text-[#5e5d59] shrink-0 w-24">[......]</span>
+                       <span className="text-primary animate-pulse">thinking…</span>
+                    </div>
+                  )}
                   <div ref={bottomRef} />
                </div>
 
               {/* Footer status */}
               <div className="px-6 py-3 border-t border-[#30302e] bg-[#1a1a18] flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em] text-[#5e5d59]">
                  <div className="flex items-center gap-6">
-                    <span>CPU: 12%</span>
-                    <span>MEM: 1.4GB</span>
-                    <span>QUEUE: 0</span>
+                    <span>QUEUE: {runCounts.queued + runCounts.running}</span>
+                    <span>RUNNING: {runCounts.running}</span>
+                    <span>LAT: {lastLatencyMs ?? "—"}ms</span>
                  </div>
                  <div className="flex items-center gap-2">
                     <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                    Secure Sandbox: ACTIVE
+                    {health?.status ? `Health: ${health.status}` : "Health: —"}
                  </div>
               </div>
            </div>
@@ -247,18 +332,38 @@ export default function ConsolePage() {
                  <div className="p-4 rounded-xl bg-card border border-border space-y-2 group hover:ring-shadow transition-all">
                     <div className="flex justify-between items-center text-[11px] font-mono uppercase tracking-widest text-muted-foreground font-bold">
                        <span>Context Pool</span>
-                       <span className="text-primary">82%</span>
+                       <span className="text-primary">{bufferUsage.pct}%</span>
                     </div>
                     <div className="h-1 bg-secondary rounded-full overflow-hidden">
-                       <div className="h-full bg-primary w-[82%]" />
+                       <div className="h-full bg-primary" style={{ width: `${bufferUsage.pct}%` }} />
                     </div>
                  </div>
                  <div className="p-4 rounded-xl bg-card border border-border space-y-2">
                     <div className="flex justify-between items-center text-[11px] font-mono uppercase tracking-widest text-muted-foreground font-bold">
                        <span>Model Latency</span>
-                       <span className="text-emerald-500">Normal</span>
+                       <span className="text-emerald-500">
+                         {lastLatencyMs === null ? "—" : `${lastLatencyMs}ms`}
+                       </span>
                     </div>
-                    <p className="text-[13px] text-foreground font-sans">184ms RTT (Gemini 3 Flash)</p>
+                    <p className="text-[12px] text-muted-foreground">
+                      Measured from the last `/api/chat` request.
+                    </p>
+                 </div>
+                 <div className="p-4 rounded-xl bg-card border border-border space-y-2">
+                    <div className="flex justify-between items-center text-[11px] font-mono uppercase tracking-widest text-muted-foreground font-bold">
+                       <span>Dependency checks</span>
+                       <span
+                         className={cn(
+                           "text-[11px]",
+                           health?.status === "ok" ? "text-emerald-500" : "text-amber-500",
+                         )}
+                       >
+                         {health?.status ?? "unknown"}
+                       </span>
+                    </div>
+                    <p className="text-[12px] text-muted-foreground">
+                      Source: `/api/health` (db/redis/object-store readiness)
+                    </p>
                  </div>
               </div>
            </div>
@@ -268,19 +373,31 @@ export default function ConsolePage() {
                  <Activity className="w-4 h-4 text-primary" />
                  Memory Map
               </h3>
-              <div className="space-y-3 opacity-60 italic text-[13px]">
-                 <p className="flex items-center gap-2 group hover:text-foreground hover:opacity-100 transition-all cursor-pointer">
-                    <Lock className="w-3.5 h-3.5" />
-                    Treasury_Contract.sol:412
-                 </p>
-                 <p className="flex items-center gap-2 group hover:text-foreground hover:opacity-100 transition-all cursor-pointer">
-                    <Search className="w-3.5 h-3.5" />
-                    Vulnerability_Pattern_DB
-                 </p>
-                 <p className="flex items-center gap-2 group hover:text-foreground hover:opacity-100 transition-all cursor-pointer">
-                    <Cpu className="w-3.5 h-3.5" />
-                    Agent_State_Vector_v4
-                 </p>
+              <div className="space-y-3">
+                <p className="text-[12px] text-muted-foreground">
+                  Memory map (heuristic) from recent console messages:
+                </p>
+                {memoryMap.length === 0 ? (
+                  <p className="text-[12px] text-muted-foreground/70 italic">
+                    No memory yet.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {memoryMap.map((m) => (
+                      <li
+                        key={m.w}
+                        className="flex items-center justify-between text-[12px] font-mono bg-card border border-border rounded-lg px-3 py-2"
+                      >
+                        <span className="text-foreground">{m.w}</span>
+                        <span className="text-muted-foreground">×{m.c}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="text-[11px] text-muted-foreground mt-2 flex items-center gap-2">
+                  <Lock className="w-3.5 h-3.5" />
+                  Console history persists locally when you leave this page.
+                </p>
               </div>
            </div>
         </div>

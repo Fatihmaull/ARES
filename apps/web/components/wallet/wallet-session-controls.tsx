@@ -3,9 +3,8 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import bs58 from "bs58";
-import Link from "next/link";
-import { User } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 type MeState =
   | { status: "loading" }
@@ -134,14 +133,13 @@ export function WalletSessionControls() {
   return (
     <div className="flex flex-col items-end gap-1 max-w-[min(100vw-2rem,320px)]">
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <Link
-          href="/dashboard/profile"
-          className="p-2 text-muted-foreground hover:text-foreground transition-all hover:bg-secondary/50 rounded-lg border border-transparent hover:border-border"
-          aria-label="Profile"
-        >
-          <User className="w-5 h-5" />
-        </Link>
-        <WalletMultiButton />
+        <WalletMultiButton
+          className={cn(
+            "!bg-secondary/40 !text-foreground !border !border-border !rounded-lg",
+            "hover:!bg-secondary hover:!text-foreground",
+            "!h-9 !px-3 !py-2 !text-xs !font-medium !shadow-none",
+          )}
+        />
         {needsSignIn ? (
           <button
             type="button"
@@ -173,7 +171,7 @@ export function WalletSessionControls() {
         </div>
       ) : (
         <p className="text-[11px] text-muted-foreground text-right leading-snug">
-          Connect a wallet, then Sign in to attach your session cookie.
+          Connect wallet, then sign to start your session.
         </p>
       )}
       {err ? (

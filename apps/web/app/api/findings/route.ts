@@ -34,6 +34,7 @@ export async function GET(req: Request) {
         limit,
       });
       const findings = rows.map((r) => ({
+        id: r.id,
         source: r.agent,
         severity: capitalize(r.severity),
         rule: typeof r.detail?.rule === "string" ? r.detail.rule : `${r.agent}-finding`,
@@ -43,6 +44,9 @@ export async function GET(req: Request) {
         line: typeof r.detail?.line === "number" ? r.detail.line : 0,
         runId: r.run_id,
         createdAt: r.created_at.toISOString(),
+        status: r.status ?? "open",
+        notes: r.notes ?? null,
+        resolvedAt: r.resolved_at?.toISOString() ?? null,
       }));
       findings.sort(
         (a, b) =>

@@ -207,3 +207,18 @@ export async function expirePendingPurchases(pool: pg.Pool): Promise<number> {
   );
   return r.rowCount ?? 0;
 }
+
+export async function cancelPendingPurchaseForWallet(
+  pool: pg.Pool,
+  purchaseId: string,
+  wallet: string,
+): Promise<boolean> {
+  const r = await pool.query(
+    `UPDATE purchases
+        SET status = 'CANCELED'
+      WHERE id = $1::uuid AND wallet = $2 AND status = 'PENDING'
+      RETURNING id`,
+    [purchaseId, wallet],
+  );
+  return (r.rowCount ?? 0) > 0;
+}

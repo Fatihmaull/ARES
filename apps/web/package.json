@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
+    "clean": "node scripts/clean-next.cjs",
     "load-test:chat": "node scripts/load-test-chat.mjs",
     "dev": "next dev",
     "build": "pnpm --filter @ares/observability build && pnpm --filter @ares/queue build && pnpm --filter @ares/engine build && next build",

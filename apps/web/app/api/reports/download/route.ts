@@ -7,7 +7,7 @@ import { apiError, enforceRateLimit, requireApiKeyOrPublic } from "@/lib/api";
 import { getReportArtifact } from "@/lib/billing/reports";
 import { getAssuranceData } from "@/lib/data";
 import { getPool } from "@/lib/db/pool";
-import { ensureWithinRoot } from "@/lib/paths";
+import { ensureWithinRoot, resolveRepoRoot } from "@/lib/paths";
 import { getObjectStore } from "@/lib/storage/objectStore";
 
 export const runtime = "nodejs";
@@ -36,6 +36,26 @@ export async function GET(req: NextRequest) {
     if (!artifact) {
       return apiError(requestId, "NOT_FOUND", "Report not found.", 404);
     }
+
+    if (artifact.bucket === "local-fs") {
+      const repoRoot = resolveRepoRoot();
+      const filePath = resolve(repoRoot, artifact.object_key);
+      const reportsDir = resolve(repoRoot, ".asst", "reports");
+      if (!ensureWithinRoot(reportsDir, filePath)) {
+        return apiError(requestId, "FORBIDDEN", "Invalid report path.", 403);
+      }
+      if (!existsSync(filePath)) {
+        return apiError(requestId, "NOT_FOUND", "Report file missing on disk.", 404);
+      }
+      const content = readFileSync(filePath);
+      return new NextResponse(new Uint8Array(content), {
+        headers: {
+          "Content-Type": artifact.content_type || "application/pdf",
+          "Content-Disposition": `attachment; filename="${basename(filePath)}"`,
+        },
+      });
+    }
+
     const store = getObjectStore();
     if (!store) {
       return apiError(

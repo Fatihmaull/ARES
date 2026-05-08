@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
-import { resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 import { initSentry, createLogger, captureException } from "@ares/observability";
 import { startWorker } from "@ares/queue";
@@ -10,10 +11,20 @@ import { validateWaveASkills } from "./waveA.js";
 
 const log = createLogger({ service: "ares-worker" });
 
+function workerRepoRoot(): string {
+  const env = process.env.ASST_REPO_ROOT?.trim();
+  if (env) return resolve(env);
+  const cwd = resolve(process.cwd());
+  if (existsSync(join(cwd, "pnpm-workspace.yaml"))) {
+    return cwd;
+  }
+  return resolve(cwd, "../..");
+}
+
 async function main(): Promise<void> {
   await initSentry({ serviceName: "ares-worker" });
 
-  const repoRoot = process.env.ASST_REPO_ROOT?.trim() || resolve(process.cwd());
+  const repoRoot = workerRepoRoot();
   validateWaveASkills(repoRoot);
 
   const concurrency = Number.parseInt(process.env.ASST_WORKER_CONCURRENCY ?? "4", 10) || 4;

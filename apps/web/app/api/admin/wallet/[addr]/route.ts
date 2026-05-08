@@ -4,6 +4,8 @@ import { getBalanceUnits, ledgerHistory } from "@/lib/billing/ledger";
 import { getPool } from "@/lib/db/pool";
 import { isAdminWallet } from "@/lib/admin";
 
+export const runtime = "nodejs";
+
 export async function GET(
   req: Request,
   ctx: { params: Promise<{ addr: string }> },

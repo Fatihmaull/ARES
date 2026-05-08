@@ -1,3 +1,5 @@
+"use client";
+
 import { create } from "zustand";
 
 /** App-wide color mode: landing, marketing, and dashboard share the same value. */

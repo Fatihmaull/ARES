@@ -57,19 +57,13 @@ export function SiteNav() {
           })}
           <span className="h-4 w-px bg-border" />
           <Link
-            href="/dashboard/overview"
+            href="/dashboard/console"
             className="hover:text-foreground transition-colors"
           >
-            Sign In
+            Connect wallet
           </Link>
           <Link
-            href="/dashboard/billing"
-            className="hidden lg:inline hover:text-foreground transition-colors"
-          >
-            Top up
-          </Link>
-          <Link
-            href="/dashboard/overview"
+            href="/dashboard/console"
             className="group inline-flex items-center gap-1.5 text-foreground"
           >
             Launch Console

@@ -13,9 +13,8 @@ import {
 } from "@/lib/billing/ledger";
 import { ACTION_COST_UNITS } from "@/lib/billing/pricing";
 import { consumeWalletFreeScan } from "@/lib/billing/quota";
-import { createRun } from "@/lib/billing/runs";
 import { getPool } from "@/lib/db/pool";
-import { getQueueClient } from "@/lib/queue/client";
+import { enqueueScanResponse } from "@/lib/scan/enqueue-scan";
 import { enforceWalletRateLimit } from "@/lib/ratelimit/wallet";
 
 export const runtime = "nodejs";
@@ -49,13 +48,14 @@ export async function POST(req: Request) {
 
   // Operator: skip billing + quota, enqueue directly.
   if (operator) {
-    return enqueueScan({
+    return enqueueScanResponse({
       runId,
       requestId,
       target,
       model,
       wallet: null,
       provisionalDebitId: undefined,
+      meta: { source: "api/scan", operator: true },
     });
   }
 
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
         reason: "scan",
         relatedRunId: runId,
       });
-      return await enqueueScan({
+      return enqueueScanResponse({
         runId,
         requestId,
         target,
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
     );
   }
 
-  return enqueueScan({
+  return enqueueScanResponse({
     runId,
     requestId,
     target,
@@ -134,67 +134,4 @@ export async function POST(req: Request) {
     wallet,
     provisionalDebitId: undefined,
   });
-}
-
-interface EnqueueScanInput {
-  runId: string;
-  requestId: string;
-  target: string;
-  model?: string;
-  wallet: string | null;
-  provisionalDebitId?: number;
-}
-
-async function enqueueScan(input: EnqueueScanInput): Promise<Response> {
-  const pool = getPool();
-  if (pool) {
-    await createRun({
-      pool,
-      id: input.runId,
-      wallet: input.wallet,
-      kind: "scan",
-      target: input.target,
-      model: input.model ?? null,
-      requestId: input.requestId,
-      relatedDebitId: input.provisionalDebitId ?? null,
-      meta: { source: "api/scan" },
-    });
-  }
-
-  try {
-    const queue = await getQueueClient();
-    const result = await queue.enqueue(
-      {
-        kind: "scan-full",
-        runId: input.runId,
-        requestId: input.requestId,
-        wallet: input.wallet,
-        target: input.target,
-        model: input.model,
-        provisionalDebitId: input.provisionalDebitId,
-      },
-      { jobId: input.runId },
-    );
-    return apiSuccess(input.requestId, {
-      status: "queued",
-      runId: input.runId,
-      jobId: result.jobId,
-      inline: result.inline,
-      target: input.target,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: unknown) {
-    // Refund the provisional debit if we couldn't enqueue.
-    if (pool && input.provisionalDebitId !== undefined) {
-      await refundDebit(pool, input.provisionalDebitId).catch(() => {});
-    }
-    const msg = error instanceof Error ? error.message : String(error);
-    return apiError(
-      input.requestId,
-      "INTERNAL_ERROR",
-      "Failed to enqueue scan job.",
-      500,
-      msg,
-    );
-  }
 }

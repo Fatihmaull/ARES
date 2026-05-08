@@ -80,3 +80,60 @@ export async function recordFinding(input: {
     ],
   );
 }
+
+export async function listFindingsForRun(
+  pool: pg.Pool,
+  runId: string,
+): Promise<Array<{ severity: string; title: string; detail: Record<string, unknown> }>> {
+  const r = await pool.query<{
+    severity: string;
+    title: string;
+    detail: Record<string, unknown>;
+  }>(
+    `SELECT severity::text, title, detail
+       FROM findings
+      WHERE run_id = $1
+      ORDER BY id ASC`,
+    [runId],
+  );
+  return r.rows;
+}
+
+export async function insertPdfReportRecord(input: {
+  pool: pg.Pool;
+  reportId: string;
+  synthesisRunId: string;
+  wallet: string | null;
+  title: string;
+  summary: string | null;
+  objectKey: string;
+  bucket: string;
+  bytes: number;
+}): Promise<void> {
+  const client = await input.pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `INSERT INTO reports (id, run_id, wallet, kind, title, summary, meta)
+       VALUES ($1, $2, $3, 'pdf', $4, $5, '{}'::jsonb)`,
+      [
+        input.reportId,
+        input.synthesisRunId,
+        input.wallet,
+        input.title,
+        input.summary,
+      ],
+    );
+    await client.query(
+      `INSERT INTO report_artifacts (report_id, object_key, bucket, bytes, content_type)
+       VALUES ($1, $2, $3, $4, 'application/pdf')`,
+      [input.reportId, input.objectKey, input.bucket, input.bytes],
+    );
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}

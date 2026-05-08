@@ -1,9 +1,14 @@
-import { resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 export function resolveRepoRoot(): string {
-  return process.env.ASST_REPO_ROOT
-    ? resolve(process.env.ASST_REPO_ROOT)
-    : resolve(process.cwd(), "../..");
+  const env = process.env.ASST_REPO_ROOT?.trim();
+  if (env) return resolve(env);
+  const cwd = resolve(process.cwd());
+  if (existsSync(join(cwd, "pnpm-workspace.yaml"))) {
+    return cwd;
+  }
+  return resolve(cwd, "../..");
 }
 
 export function ensureWithinRoot(root: string, targetPath: string): boolean {

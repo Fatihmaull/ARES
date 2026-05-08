@@ -135,19 +135,20 @@ function DevSDK() {
       <div className="col-span-full md:col-span-2 lg:col-start-2 lg:col-span-2 cell-pad cell-pad--stroke flex flex-col gap-3">
         <span className="label-accent">Developer SDK</span>
         <h2 className="type-xl font-serif tracking-tight">
-          ARES CLI Anywhere
+          Coming soon
         </h2>
         <p className="type-sm text-muted-foreground max-w-[38ch]">
-          Wire autonomous intelligence into any shell or CI runner.
+          CLI and SDK surfaces will return as a polished release.
         </p>
 
-        <Link
-          href="/docs"
-          className="group mt-3 inline-flex items-center justify-between gap-4 px-3 py-2.5 w-fit bg-foreground text-background font-mono text-[11px] uppercase tracking-[0.18em] hover:bg-primary transition-colors"
+        <button
+          type="button"
+          disabled
+          className="group mt-3 inline-flex items-center justify-between gap-4 px-3 py-2.5 w-fit bg-secondary text-muted-foreground font-mono text-[11px] uppercase tracking-[0.18em] opacity-70 cursor-not-allowed"
         >
-          View Documentation
-          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-        </Link>
+          Documentation (coming soon)
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       <div className="col-span-full md:col-span-4 lg:col-start-4 lg:col-span-3 cell-pad">
@@ -162,25 +163,10 @@ function DevSDK() {
               ares.sdk · CLI
             </span>
           </div>
-          <div className="px-4 py-5 font-mono text-[13px] leading-relaxed space-y-1.5">
-            <p>
-              <span className="text-muted-foreground select-none">$ </span>
-              <span className="text-foreground">
-                npm install -g @ares/sdk
-              </span>
-            </p>
-            <p className="text-muted-foreground">→ resolved · 1 package</p>
-            <p>
-              <span className="text-muted-foreground select-none">$ </span>
-              <span className="text-foreground">
-                ares scan --target ./programs/staking --mode autonomous
-              </span>
-            </p>
-            <p className="text-primary">
-              ▸ dispatching 3 sub-agents · streaming telemetry
-            </p>
-            <p className="text-emerald-700 dark:text-emerald-400">
-              ✓ scan complete · 2 findings, 1 critical
+          <div className="px-4 py-5">
+            <p className="text-[13px] text-muted-foreground leading-relaxed">
+              CLI install, SDK wiring, and CI integrations are being rebuilt.
+              This section will return as an opt-in “coming soon” surface.
             </p>
           </div>
         </div>
