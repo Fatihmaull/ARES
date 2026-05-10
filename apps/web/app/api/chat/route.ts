@@ -14,9 +14,12 @@ import {
   settleDebit,
 } from "@/lib/billing/ledger";
 import { ACTION_COST_UNITS } from "@/lib/billing/pricing";
+import { hasUnlimitedCredits } from "@/lib/billing/unlimited-credits";
 import { consumeAnonChatQuota, consumeWalletFreeChat } from "@/lib/billing/quota";
 import { getPool } from "@/lib/db/pool";
 import { enforceWalletRateLimit } from "@/lib/ratelimit/wallet";
+
+const CHAT_TIMEOUT_MS = Number.parseInt(process.env.ASST_CHAT_TIMEOUT_MS ?? "45000", 10) || 45000;
 
 export async function POST(req: Request) {
   const ingress = authenticateIngress(req);
@@ -53,16 +56,24 @@ export async function POST(req: Request) {
       const ares = createPublicOrchestrator({
         model,
       });
-      const result = await ares.chat(prompt);
+      const result = await Promise.race<string>([
+        ares.chat(prompt),
+        new Promise<string>((_, reject) =>
+          setTimeout(() => reject(new Error(`Chat timeout after ${CHAT_TIMEOUT_MS}ms`)), CHAT_TIMEOUT_MS),
+        ),
+      ]);
       return apiSuccess(requestId, { response: result });
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error("API Route Error:", error);
+      const isTimeout = msg.toLowerCase().includes("timeout");
       return apiError(
         requestId,
         "INTERNAL_ERROR",
-        "Failed to communicate with ARES engine.",
-        500,
+        isTimeout
+          ? "AI provider timed out. Retry, or switch model/provider in your environment."
+          : "Failed to communicate with ARES engine.",
+        isTimeout ? 504 : 500,
         msg || "Unknown execution error",
       );
     }
@@ -96,6 +107,11 @@ export async function POST(req: Request) {
     }
 
     const wallet = session.sub;
+
+    if (hasUnlimitedCredits(wallet)) {
+      return invokeChat();
+    }
+
     const balance = await getBalanceUnits(pool, wallet);
 
     if (balance >= ACTION_COST_UNITS.chat) {

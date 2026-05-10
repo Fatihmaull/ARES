@@ -12,6 +12,7 @@ import {
   getBalanceUnits,
 } from "@/lib/billing/ledger";
 import { ACTION_COST_UNITS } from "@/lib/billing/pricing";
+import { hasUnlimitedCredits } from "@/lib/billing/unlimited-credits";
 import { consumeWalletFreeScan } from "@/lib/billing/quota";
 import { getPool } from "@/lib/db/pool";
 import { enqueueScanResponse } from "@/lib/scan/enqueue-scan";
@@ -90,6 +91,19 @@ export async function POST(req: Request) {
   }
 
   const wallet = session.sub;
+
+  if (hasUnlimitedCredits(wallet)) {
+    return enqueueScanResponse({
+      runId,
+      requestId,
+      target,
+      model,
+      wallet,
+      provisionalDebitId: undefined,
+      meta: { source: "api/scan", unlimitedCredits: true },
+    });
+  }
+
   const balance = await getBalanceUnits(pool, wallet);
 
   if (balance >= ACTION_COST_UNITS.scan) {

@@ -20,6 +20,8 @@ interface ReportDto {
   date: string;
   status: string;
   path: string;
+  /** Server-suggested .pdf filename from report title */
+  fileName?: string;
   summary: string | null;
   runId: string | null;
 }
@@ -208,6 +210,44 @@ export default function ReportsPage() {
     );
   }, [reports, search]);
 
+  async function handleReportDownload(report: ReportDto) {
+    setError(null);
+    try {
+      const res = await fetch(report.path, { credentials: "include" });
+      const ct = res.headers.get("content-type") ?? "";
+      if (!res.ok || ct.includes("application/json")) {
+        let msg = `Download failed (${res.status}).`;
+        try {
+          const j = (await res.json()) as {
+            error?: { message?: string; details?: string };
+          };
+          msg = j?.error?.message ?? msg;
+          if (j?.error?.details) msg = `${msg} (${j.error.details})`;
+        } catch {
+          /* ignore */
+        }
+        setError(msg);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const fallback = `ARES-findings-${report.id.slice(0, 8)}.pdf`;
+      const name =
+        report.fileName && report.fileName.toLowerCase().endsWith(".pdf")
+          ? report.fileName
+          : fallback;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-700">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 overflow-hidden">
@@ -371,14 +411,14 @@ export default function ReportsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <a
-                    href={report.path}
-                    download
+                  <button
+                    type="button"
+                    onClick={() => void handleReportDownload(report)}
                     className="px-4 py-2 border border-border rounded-xl text-[12px] font-medium hover:bg-secondary/50 transition-all flex items-center gap-2"
                   >
                     <Download className="w-3.5 h-3.5 text-primary" />
-                    Download
-                  </a>
+                    Download PDF
+                  </button>
                 </div>
               </div>
             ))

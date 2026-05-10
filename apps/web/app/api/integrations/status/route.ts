@@ -19,6 +19,8 @@ export async function GET(req: Request) {
       envPresent("ASST_OBJECT_STORE_ACCESS_KEY_ID") &&
       envPresent("ASST_OBJECT_STORE_SECRET_ACCESS_KEY"),
     payai: envPresent("PAYAI_API_KEY"),
+    google: envPresent("GOOGLE_API_KEY"),
+    openrouter: envPresent("OPENROUTER_API_KEY"),
     openai: envPresent("OPENAI_API_KEY"),
     database: envPresent("DATABASE_URL"),
     queueRedis: envPresent("ASST_QUEUE_REDIS_URL"),

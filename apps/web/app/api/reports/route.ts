@@ -13,11 +13,13 @@ import {
   getBalanceUnits,
 } from "@/lib/billing/ledger";
 import { ACTION_COST_UNITS } from "@/lib/billing/pricing";
+import { hasUnlimitedCredits } from "@/lib/billing/unlimited-credits";
 import { getRun } from "@/lib/billing/runs";
 import { listReports } from "@/lib/billing/reports";
 import { getAssuranceData } from "@/lib/data";
 import { getPool } from "@/lib/db/pool";
 import { resolveRepoRoot } from "@/lib/paths";
+import { sanitizePdfFilename } from "@/lib/download-filename";
 
 import { enqueueReportResponse } from "@/lib/scan/enqueue-report";
 
@@ -46,6 +48,7 @@ export async function GET(req: Request) {
           date: r.created_at.toISOString().split("T")[0],
           status: "verified",
           path: `/api/reports/download?id=${encodeURIComponent(r.id)}`,
+          fileName: sanitizePdfFilename(r.title, r.id),
           summary: r.summary,
           runId: r.run_id,
         })),
@@ -123,26 +126,32 @@ export async function POST(req: Request) {
   }
 
   const wallet = session.sub;
-  const balance = await getBalanceUnits(pool, wallet);
-  if (balance < ACTION_COST_UNITS.report) {
-    return apiError(
-      requestId,
-      "FORBIDDEN",
-      "Insufficient credits to synthesize a report.",
-      402,
-    );
+  const unlimited = hasUnlimitedCredits(wallet);
+
+  if (!unlimited) {
+    const balance = await getBalanceUnits(pool, wallet);
+    if (balance < ACTION_COST_UNITS.report) {
+      return apiError(
+        requestId,
+        "FORBIDDEN",
+        "Insufficient credits to synthesize a report.",
+        402,
+      );
+    }
   }
 
   const runId = crypto.randomUUID();
   let debitId: number | undefined;
   try {
-    debitId = await insertDebitPending({
-      pool,
-      wallet,
-      units: ACTION_COST_UNITS.report,
-      reason: "report",
-      relatedRunId: runId,
-    });
+    if (!unlimited) {
+      debitId = await insertDebitPending({
+        pool,
+        wallet,
+        units: ACTION_COST_UNITS.report,
+        reason: "report",
+        relatedRunId: runId,
+      });
+    }
     return enqueueReportResponse({
       runId,
       requestId,

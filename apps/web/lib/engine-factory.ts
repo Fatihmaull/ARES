@@ -27,15 +27,31 @@ if (process.env.ASST_WEB_ALLOW_WRITE !== "1") {
   process.env.ASST_ALLOW_WRITE = "0";
 }
 
+function hasEnv(name: string): boolean {
+  return Boolean(process.env[name]?.trim());
+}
+
+function chooseDefaultModel(): string {
+  if (process.env.ASST_ORCHESTRATOR_MODEL?.trim()) {
+    return process.env.ASST_ORCHESTRATOR_MODEL.trim();
+  }
+  if (hasEnv("GOOGLE_API_KEY")) {
+    return "google:gemini-2.5-flash";
+  }
+  if (hasEnv("OPENROUTER_API_KEY")) {
+    return "openrouter:nvidia/nemotron-nano-9b-v2:free";
+  }
+  if (hasEnv("OPENAI_API_KEY") || hasEnv("ASST_OPENAI_API_KEY")) {
+    return "openai:gpt-4o-mini";
+  }
+  if (hasEnv("ASST_LOCAL_BASE_URL") || hasEnv("OPENAI_BASE_URL")) {
+    return "local:local-model";
+  }
+  return "ollama:llama3.1";
+}
+
 export function createPublicOrchestrator(opts: PublicOrchestratorOptions = {}) {
   const repoRoot = opts.repoRoot ?? resolveRepoRoot();
-
-  // In local development we want chat routes to work even when the default
-  // provider (Google) is gated/disabled. Prefer an explicit env override,
-  // otherwise fall back to a cheap OpenRouter model.
-  const model =
-    opts.model ??
-    process.env.ASST_ORCHESTRATOR_MODEL ??
-    "openrouter:nvidia/nemotron-nano-9b-v2:free";
+  const model = opts.model ?? chooseDefaultModel();
   return new Orchestrator(repoRoot, { model });
 }

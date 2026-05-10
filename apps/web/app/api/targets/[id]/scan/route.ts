@@ -12,6 +12,7 @@ import {
   getBalanceUnits,
 } from "@/lib/billing/ledger";
 import { ACTION_COST_UNITS } from "@/lib/billing/pricing";
+import { hasUnlimitedCredits } from "@/lib/billing/unlimited-credits";
 import { consumeWalletFreeScan } from "@/lib/billing/quota";
 import { getPool } from "@/lib/db/pool";
 import { enqueueScanResponse } from "@/lib/scan/enqueue-scan";
@@ -66,9 +67,25 @@ export async function POST(
 
   const target = scanTargetFromRow(row);
   const wallet = session.sub;
-  const balance = await getBalanceUnits(pool, wallet);
 
   const meta = { source: "api/targets/[id]/scan", targetId: row.id };
+
+  if (hasUnlimitedCredits(wallet)) {
+    const res = await enqueueScanResponse({
+      runId,
+      requestId,
+      target,
+      wallet,
+      provisionalDebitId: undefined,
+      meta: { ...meta, unlimitedCredits: true },
+    });
+    if (res.status >= 200 && res.status < 300) {
+      await touchTargetScan({ pool, wallet, targetId: row.id, runId });
+    }
+    return res;
+  }
+
+  const balance = await getBalanceUnits(pool, wallet);
 
   if (balance >= ACTION_COST_UNITS.scan) {
     let debitId: number | undefined;

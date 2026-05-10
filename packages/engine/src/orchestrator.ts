@@ -40,7 +40,7 @@ ${SUB_AGENT_CONFIGS.map(c => `- **${c.name}**: ${c.description}`).join("\n")}
 
 ## Rules:
 - Always include "report_synthesizer" as the LAST agent when the user wants analysis or a report
-- For general chat/questions, respond with just a "report_synthesizer" agent
+- For general chat/questions, respond with just a "report_synthesizer" agent whose task demands a **short** reply (a few sentences or bullets). Avoid long brochures and tables unless the user asks for detail or an audit-style summary.
 - For full scans, invoke ALL relevant agents
 - ALWAYS pass the repository path ${repoRoot} to each agent's task
 - Be specific in your task descriptions — tell each agent exactly what to analyze
@@ -50,6 +50,39 @@ ${SUB_AGENT_CONFIGS.map(c => `- **${c.name}**: ${c.description}`).join("\n")}
 - "check for rug pull patterns on token X" → invoke rug_pull_detector + report_synthesizer  
 - "find secrets in this repo" → invoke secret_hygiene_scanner + report_synthesizer
 - "hi, what can you do?" → invoke report_synthesizer with task to introduce capabilities`;
+
+/** Tiny greetings/pings: answered locally so report_synthesizer does not hallucinate PDF/report pipelines. */
+function casualPingReply(input: string): string | null {
+  const t = input.trim();
+  if (!t || t.length > 120) return null;
+
+  if (/^(hi|hello|hey|yo|testing|test|ping|pong)\b[!?.…\s]*$/iu.test(t)) {
+    return "Hi — I'm here. Tell me what to audit, or paste a GitHub repo URL for a scan.";
+  }
+
+  if (
+    /\bwho\s+are\s+you\b/i.test(t) ||
+    /\bwhat\s+are\s+you\b/i.test(t) ||
+    /\byour\s+name\b/i.test(t)
+  ) {
+    return [
+      "I'm **ARES** (Autonomous Resilience Evaluation System) — a security-assistant stack for codebases with a Solana/security lens.",
+      "I can **chat**, **queue repo scans**, and **summarize findings** once runs finish. Paste a GitHub URL to scan or ask something specific.",
+    ].join("\n\n");
+  }
+
+  if (
+    /\bwhat\s+(can|do)\s+you\s+do\b/i.test(t) ||
+    /\bcapabilit(y|ies)\b/i.test(t)
+  ) {
+    return [
+      "I help with **security posture**: repo scans (secrets, deps, Solana-oriented checks when relevant), queued full scans, and synthesizing findings into readable summaries.",
+      "Paste a **repo URL** or ask something specific (e.g. \"scan this repo …\"). For deep dives, open **Runs** after enqueue.",
+    ].join("\n\n");
+  }
+
+  return null;
+}
 
 export class Orchestrator {
   private llm: any;
@@ -92,6 +125,12 @@ export class Orchestrator {
   ): Promise<string> {
     await this.init();
     await this.persistence.addHistory("user", input);
+
+    const ping = casualPingReply(input);
+    if (ping) {
+      await this.persistence.addHistory("agent", ping);
+      return ping;
+    }
 
     // Step 1: Ask orchestrator to route
     onStatus?.("Orchestrator is reasoning...");

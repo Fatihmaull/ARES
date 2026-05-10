@@ -15,8 +15,10 @@ import type {
 
 import { getPool } from "./db.js";
 import { notifyWallet } from "./notify.js";
+import { renderAresDefenseReportPdf } from "./report-pdf.js";
 import {
   appendTraceEvent,
+  getRunBrief,
   insertPdfReportRecord,
   listFindingsForRun,
   recordFinding,
@@ -190,38 +192,23 @@ async function runReport(payload: ReportJobPayload, _meta: JobMeta): Promise<voi
 
   try {
     const findings = await listFindingsForRun(pool, payload.parentRunId);
-    const { jsPDF } = await import("jspdf");
+    const parentRun = await getRunBrief(pool, payload.parentRunId);
+    const parentShort = payload.parentRunId.slice(0, 8);
+    const scanTarget =
+      parentRun?.kind === "scan" && parentRun.target?.trim()
+        ? parentRun.target.trim()
+        : null;
+    const headline = scanTarget
+      ? `Findings from repo ${scanTarget}`
+      : `Findings from run ${parentShort}`;
+    const reportTitle = `${headline} (${parentShort}...)`;
 
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text("ARES findings report", 14, 18);
-    doc.setFontSize(10);
-    doc.text(`Parent run: ${payload.parentRunId}`, 14, 26);
-    doc.text(`Generated: ${new Date().toISOString()}`, 14, 32);
-
-    let y = 42;
-    const lineHeight = 6;
-    const pageHeight = doc.internal.pageSize.getHeight();
-
-    for (const f of findings) {
-      const block = `[${f.severity}] ${f.title}`;
-      const lines = doc.splitTextToSize(block, 180);
-      for (const line of lines) {
-        if (y > pageHeight - 20) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.text(line, 14, y);
-        y += lineHeight;
-      }
-      y += 2;
-    }
-
-    if (findings.length === 0) {
-      doc.text("No findings recorded for this run.", 14, y);
-    }
-
-    const pdfBytes = doc.output("arraybuffer") as ArrayBuffer;
+    const pdfBytes = renderAresDefenseReportPdf({
+      headline,
+      parentRunId: payload.parentRunId,
+      scanTarget,
+      findings,
+    });
     const buf = Buffer.from(pdfBytes);
     const reportId = randomUUID();
     const reportsDir = join(repoRoot(), ".asst", "reports");
@@ -237,11 +224,18 @@ async function runReport(payload: ReportJobPayload, _meta: JobMeta): Promise<voi
       reportId,
       synthesisRunId: payload.runId,
       wallet: payload.wallet,
-      title: `Findings report (${payload.parentRunId.slice(0, 8)}…)`,
-      summary: `${findings.length} finding(s) from parent run.`,
+      title: reportTitle,
+      summary: scanTarget
+        ? `${findings.length} finding(s) synthesized from scan target "${scanTarget}".`
+        : `${findings.length} finding(s) from parent run ${parentShort}.`,
       objectKey: relativeKey.replace(/\\/g, "/"),
       bucket: "local-fs",
       bytes: buf.byteLength,
+      meta: {
+        parentRunId: payload.parentRunId,
+        parentKind: parentRun?.kind ?? null,
+        scanTarget,
+      },
     });
 
     await appendTraceEvent({

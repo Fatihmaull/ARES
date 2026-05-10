@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { safeResponseJson } from "@/lib/safe-response-json";
 import { useConsoleStore } from "@/lib/console/store";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type RunDto = {
   id: string;
@@ -25,11 +27,70 @@ type RunDto = {
   createdAt: string;
 };
 
+function extractFirstUrl(text: string): string | null {
+  const m = text.match(/https?:\/\/[^\s)]+/i);
+  return m?.[0] ?? null;
+}
+
+function isScanIntent(text: string): boolean {
+  return /\b(scan|audit|analy[sz]e)\b/i.test(text) && /\b(repo|repository|github|codebase)\b/i.test(text);
+}
+
+/** Latest ISO-8601 wins (string compare valid for Zulu timestamps from `toISOString()`). */
+function maxIso(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): string | null {
+  const aa = a?.trim() || null;
+  const bb = b?.trim() || null;
+  if (!aa) return bb;
+  if (!bb) return aa;
+  return aa > bb ? aa : bb;
+}
+
+function RenderConsoleMessage({ message }: { message: string }) {
+  return (
+    <div className="text-[#faf9f5] leading-relaxed break-words flex-1 min-w-0 overflow-x-auto">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc pl-5 space-y-1 mb-2 last:mb-0">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1 mb-2 last:mb-0">{children}</ol>,
+          li: ({ children }) => <li>{children}</li>,
+          table: ({ children }) => (
+            <div className="my-2 overflow-x-auto border border-[#30302e] rounded-lg">
+              <table className="w-full min-w-[640px] border-collapse text-[12px]">{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => <thead className="bg-[#1a1a18]">{children}</thead>,
+          th: ({ children }) => (
+            <th className="border-b border-[#30302e] border-r border-[#30302e] last:border-r-0 px-3 py-2 text-left font-semibold text-[#e2dfd2]">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="border-b border-[#262624] border-r border-[#30302e] last:border-r-0 px-3 py-2 align-top">
+              {children}
+            </td>
+          ),
+          code: ({ children }) => (
+            <code className="rounded bg-[#1f1f1d] px-1.5 py-0.5 text-[12px] text-[#e8e5d9]">{children}</code>
+          ),
+        }}
+      >
+        {message}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 export default function ConsolePage() {
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendingSlow, setSendingSlow] = useState(false);
   const [streamEnabled, setStreamEnabled] = useState(true);
   const [health, setHealth] = useState<any>(null);
   const [runCounts, setRunCounts] = useState<{ queued: number; running: number }>({
@@ -45,6 +106,7 @@ export default function ConsolePage() {
   const setConnected = useConsoleStore((s) => s.setConnected);
   const lastLatencyMs = useConsoleStore((s) => s.lastLatencyMs);
   const setLastLatencyMs = useConsoleStore((s) => s.setLastLatencyMs);
+  const streamReplayAfterIso = useConsoleStore((s) => s.streamReplayAfterIso ?? null);
 
   const loadVitals = useCallback(async () => {
     try {
@@ -81,8 +143,11 @@ export default function ConsolePage() {
     }
 
     let intentionalClose = false;
-    const eventSource = new EventSource("/api/console/stream");
-    setConnected(true);
+    const { logs: L, streamReplayAfterIso: cutoff } = useConsoleStore.getState();
+    const lastTs = L[L.length - 1]?.timestamp ?? null;
+    const afterIso = maxIso(lastTs, cutoff ?? undefined);
+    const qs = afterIso ? `?after=${encodeURIComponent(afterIso)}` : "";
+    const eventSource = new EventSource(`/api/console/stream${qs}`);
 
     eventSource.onmessage = (event) => {
       try {
@@ -95,6 +160,7 @@ export default function ConsolePage() {
           timestamp?: string;
         };
         if (data.type === "log" && data.message && data.timestamp) {
+          setConnected(true);
           addLog({
             id: data.id ?? `${data.timestamp}:${data.message.slice(0, 32)}`,
             source: data.source ?? "ARES",
@@ -102,6 +168,9 @@ export default function ConsolePage() {
             message: data.message,
             timestamp: data.timestamp,
           });
+          setLoading(false);
+        } else if (data.type === "heartbeat") {
+          setConnected(true);
           setLoading(false);
         }
       } catch {
@@ -121,11 +190,20 @@ export default function ConsolePage() {
       eventSource.close();
       setConnected(false);
     };
-  }, [streamEnabled, addLog, setConnected]);
+  }, [streamEnabled, streamReplayAfterIso, addLog, setConnected]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
+
+  useEffect(() => {
+    if (!sending) {
+      setSendingSlow(false);
+      return;
+    }
+    const t = setTimeout(() => setSendingSlow(true), 12000);
+    return () => clearTimeout(t);
+  }, [sending]);
 
   const handleCommand = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,16 +222,36 @@ export default function ConsolePage() {
     try {
       setSending(true);
       const t0 = performance.now();
-      const res = await fetch("/api/chat", {
+      const scanMode = isScanIntent(cmd);
+      const scanTarget = extractFirstUrl(cmd) ?? ".";
+      const endpoint = scanMode ? "/api/scan" : "/api/chat";
+      const payload = scanMode ? { target: scanTarget } : { prompt: cmd };
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: cmd }),
+        body: JSON.stringify(payload),
       });
       const t1 = performance.now();
       setLastLatencyMs(Math.round(t1 - t0));
 
       const data = await safeResponseJson<any>(res);
-      const responseMessage = data?.data?.response || data?.response || "No response.";
+      let responseMessage: string;
+      if (scanMode) {
+        responseMessage =
+          data?.data?.runId
+            ? `Scan queued as run ${String(data.data.runId).slice(0, 8)}… Target: ${scanTarget}`
+            : data?.error?.message ||
+              data?.error?.details ||
+              (res.ok ? "Scan request accepted." : `Failed to queue scan (${res.status}).`);
+      } else {
+        responseMessage =
+          data?.data?.response ||
+          data?.response ||
+          data?.error?.message ||
+          data?.error?.details ||
+          (res.ok ? "No response." : `Request failed (${res.status}).`);
+      }
 
       addLog({
         id: `${Date.now() + 1}`,
@@ -284,7 +382,7 @@ export default function ConsolePage() {
                          log.level === 'warn' ? "text-amber-400 bg-amber-400/5" : 
                          log.level === 'security' ? "text-emerald-400 bg-emerald-400/5" : "text-rose-400 bg-rose-400/5"
                        )}>&gt; {log.source.toUpperCase()}</span>
-                       <span className="text-[#faf9f5] leading-relaxed break-words flex-1">{log.message}</span>
+                       <RenderConsoleMessage message={log.message} />
                     </div>
                   ))}
                   <form onSubmit={handleCommand} className="flex gap-4">
@@ -300,7 +398,9 @@ export default function ConsolePage() {
                   {sending && (
                     <div className="flex gap-4 opacity-70">
                        <span className="text-[#5e5d59] shrink-0 w-24">[......]</span>
-                       <span className="text-primary animate-pulse">thinking…</span>
+                       <span className="text-primary animate-pulse">
+                         {sendingSlow ? "still processing… (heavy task)" : "thinking…"}
+                       </span>
                     </div>
                   )}
                   <div ref={bottomRef} />

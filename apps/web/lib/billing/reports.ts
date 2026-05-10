@@ -47,6 +47,17 @@ export async function listReports(input: {
   return r.rows;
 }
 
+export async function getReportTitle(
+  pool: pg.Pool,
+  reportId: string,
+): Promise<string | null> {
+  const r = await pool.query<{ title: string }>(
+    `SELECT title FROM reports WHERE id = $1 LIMIT 1`,
+    [reportId],
+  );
+  return r.rows[0]?.title ?? null;
+}
+
 export async function getReportArtifact(
   pool: pg.Pool,
   reportId: string,

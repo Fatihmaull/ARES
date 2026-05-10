@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPublicOrchestrator } from "@/lib/engine-factory";
-import { enforceRateLimit, requireApiKey } from "@/lib/api";
+import { enforceRateLimit, requireApiKeyOrPublic } from "@/lib/api";
 
 export async function GET(req: NextRequest) {
-  const auth = requireApiKey(req);
+  const auth = requireApiKeyOrPublic(req);
   if (!auth.ok) return auth.response;
   const { requestId } = auth;
   const rate = enforceRateLimit(req, requestId, "console-stream", 30);
@@ -23,6 +23,8 @@ export async function GET(req: NextRequest) {
 
   (async () => {
     let interval: ReturnType<typeof setInterval> | undefined;
+    const after = req.nextUrl.searchParams.get("after");
+    const afterMs = after ? Date.parse(after) : Number.NaN;
 
     const cleanup = () => {
       if (interval) clearInterval(interval);
@@ -38,7 +40,13 @@ export async function GET(req: NextRequest) {
       const orchestrator = createPublicOrchestrator();
       await orchestrator.init();
       const history = await orchestrator.getRecentHistory(20);
-      const chronological = [...history].reverse();
+      const chronological = [...history]
+        .reverse()
+        .filter((msg) => {
+          if (!Number.isFinite(afterMs)) return true;
+          const ts = Date.parse(msg.timestamp);
+          return Number.isFinite(ts) && ts > afterMs;
+        });
 
       for (const msg of chronological) {
         await send({

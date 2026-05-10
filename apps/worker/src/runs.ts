@@ -84,19 +84,40 @@ export async function recordFinding(input: {
 export async function listFindingsForRun(
   pool: pg.Pool,
   runId: string,
-): Promise<Array<{ severity: string; title: string; detail: Record<string, unknown> }>> {
+): Promise<
+  Array<{
+    agent: string;
+    layer: string;
+    severity: string;
+    title: string;
+    detail: Record<string, unknown>;
+  }>
+> {
   const r = await pool.query<{
+    agent: string;
+    layer: string;
     severity: string;
     title: string;
     detail: Record<string, unknown>;
   }>(
-    `SELECT severity::text, title, detail
+    `SELECT agent, layer::text AS layer, severity::text, title, detail
        FROM findings
       WHERE run_id = $1
       ORDER BY id ASC`,
     [runId],
   );
   return r.rows;
+}
+
+export async function getRunBrief(
+  pool: pg.Pool,
+  id: string,
+): Promise<{ kind: string; target: string | null } | null> {
+  const r = await pool.query<{ kind: string; target: string | null }>(
+    `SELECT kind::text AS kind, target FROM runs WHERE id = $1`,
+    [id],
+  );
+  return r.rows[0] ?? null;
 }
 
 export async function insertPdfReportRecord(input: {
@@ -109,19 +130,21 @@ export async function insertPdfReportRecord(input: {
   objectKey: string;
   bucket: string;
   bytes: number;
+  meta?: Record<string, unknown>;
 }): Promise<void> {
   const client = await input.pool.connect();
   try {
     await client.query("BEGIN");
     await client.query(
       `INSERT INTO reports (id, run_id, wallet, kind, title, summary, meta)
-       VALUES ($1, $2, $3, 'pdf', $4, $5, '{}'::jsonb)`,
+       VALUES ($1, $2, $3, 'pdf', $4, $5, $6::jsonb)`,
       [
         input.reportId,
         input.synthesisRunId,
         input.wallet,
         input.title,
         input.summary,
+        JSON.stringify(input.meta ?? {}),
       ],
     );
     await client.query(
